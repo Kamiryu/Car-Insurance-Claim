@@ -18,11 +18,13 @@ library(dplyr)
 library(tidyr)
 library(randomForest) # Random forest
 library(corrplot)     # Plot correlations
-library(knitr) #Table presentation
-library(GGally) # Correlation and scatter plots
+library(knitr)         #Table presentation
+library(GGally)       # Correlation and scatter plots
 library(class)       # knn
 library(rpart)       # trees
 library(caret)       # preprocess data
+library(rpart.plot)     # plot trees
+library(forecast)       # accuracy
 
 library(doParallel)#Accelerating computations by setting CPU to work in parallel
 cores = detectCores()
@@ -76,18 +78,19 @@ cars_reduced <- cars[,-c(20,13,23,25,29)]
 ```
 
 ```{r}
-rf_fit <- randomForest(as.factor(cars$is_claim) ~ ., # Fit a random forest with reduced set
-                       data = cars_reduced,
-                       ntree = 500,
-                       mtry = 4,
-                       importance = TRUE)
-
-
-rf_fit$importance[,3]
-
-sort(round(rf_fit$importance[,4],3), decreasing = TRUE)
-
-varImpPlot(rf_fit, type = 1)
+# Commented to avoid computing for the moment
+# rf_fit <- randomForest(as.factor(cars$is_claim) ~ ., # Fit a random # forest with reduced set
+#                        data = cars_reduced,
+#                        ntree = 500,
+#                        mtry = 4,
+#                        importance = TRUE)
+# 
+# 
+# rf_fit$importance[,3]
+# 
+# sort(round(rf_fit$importance[,4],3), decreasing = TRUE)
+# 
+# varImpPlot(rf_fit, type = 1)
 
 cars_reduced_rf <- cars_reduced[,c("policy_tenure","age_of_car","age_of_policyholder",
                         "population_density","area_cluster","height",
@@ -237,4 +240,137 @@ proportions(table(cars_train$is_claim))
 proportions(table(cars_validation$is_claim))
 
 ```
+
+```{r}
+# Add dummy variables for Education
+cars_final$model <- as.factor(cars_final$model)                       # change variable format to factor 
+
+dummies <- dummyVars(~ ., data = cars_final)                             # create object for dummy variables
+cars_final_dummy <- as.data.frame(predict(dummies, newdata = cars_final))      # apply dummies to data
+
+cars_final$is_claim <- as.factor(cars_final$is_claim)                # change variable format to factor
+cars_final_dummy$is_claim <- as.factor(cars_final_dummy$is_claim) 
+
+head(cars_final_dummy)                                                  # resulting in 11
+str(cars_final_dummy)
+
+```
+
+```{r}
+
+train_dummy <- cars_final_dummy[index,]
+valid_dummy <- cars_final_dummy[-index,]
+
+dim(train_dummy)
+dim(valid_dummy)
+proportions(table(cars_train$is_claim))
+proportions(table(cars_validation$is_claim))
+proportions(table(train_dummy$is_claim))
+proportions(table(valid_dummy$is_claim))
+```
+
+
+## KNN
+```{r}
+# Find optimal k
+
+# Data frame for k from 1 to 50 and respective accuracy
+accuracy <- data.frame(k = seq(1, 50, 1), overallaccuracy = rep(0, 50))  
+
+# Use for loop to find k with highest accuracy
+for (i in 1:50) {
+  knn.pred<-knn(train_dummy[,-16],valid_dummy[,-16],
+                cl=train_dummy[,16],k=i)
+  accuracy[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$overall[1]
+} # loop for calculating the accuracy fo k=30
+# Display accuracy for ten first k
+kable(accuracy[1:15,], row.names = F, caption = "Accuracy")
+```
+
+```{r}
+which(accuracy[,2] == max(accuracy[,2]))   # max accuracy
+```
+
+```{r}
+# Plot accuracy for different k
+ggplot(accuracy, aes(k, overallaccuracy)) + 
+  geom_line() + 
+  theme_minimal() +
+  labs (title = "K nearest neighbours: Overall accuracy vs K", 
+        y = "Accuracy", 
+        x = "k nearest neigbours" )
+```
+
+```{r}
+knn.pred.valid <- knn(train_dummy[, -16], valid_dummy[, -16], cl = train_dummy[, 16], k = 3 ,prob = T)     #prediction on validation data usig k=3
+cmk <- confusionMatrix(knn.pred.valid,valid_dummy[,16])    #confusion matrix 
+fourfoldplot(cmk$table, color = c("cyan", "pink"),
+             conf.level = 0, margin = 1, main = "Confusion Matrix for KNN")     # plot confusion ma
+```
+
+## Classification tree
+
+```{r}
+# Classification tree
+
+pred_tree_tr <- rpart(cars_train$is_claim ~.,
+                   data = cars_train, # Data set
+                   method = "class") # Method: Classification
+
+rpart.plot(pred_tree_tr) # Plot the tree
+
+pred_tree_tr_proba <- predict(pred_tree_tr, cars_train[,c(-6)])[,2] # Take the columns for success prediction
+
+pred_tree_tr_outcome <- ifelse(pred_tree_tr_proba >= 0.5,1,0) # Use cutoff value at 0.5 to determine success
+
+
+
+pred_tree_v_proba <- predict(pred_tree_tr, cars_validation[,c(-6)])[,2]
+# Take the columns for success prediction
+
+pred_tree_v_outcome <- ifelse(pred_tree_v_proba >= 0.5,1,0) # Use cutoff value at 0.5 to determine success
+```
+
+```{r}
+error_train <- round(accuracy(
+  pred_tree_tr_outcome,
+  cars_train$is_claim),# Actual price
+  3) # Rounded digit 
+
+error_validation <- round(accuracy(
+  pred_tree_v_outcome,# Fitted value
+  cars_validation$is_claim),
+  3) # Actual state 
+
+
+# RMSE 
+rmse_tree<- data.frame(
+  rbind(error_train[,1:3],
+        error_validation)[,1:3]) # Combine RMS errors into a data frame
+
+rownames(rmse_tree) <- c("Train", "Validation") # Rename columns
+
+rmse_tree = kable(rmse_tree,  caption = "Error table for tree classification")
+
+
+rmse_tree # Display RMSE
+```
+```{r}
+# Confusion matrix for classification tree
+conf_matrix_tree <- confusionMatrix(
+  factor(pred_tree_v_outcome),
+  factor(cars_validation$is_claim),
+  positive = "1")
+
+# plot confusion matrix
+fourfoldplot(conf_matrix_tree$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for KNN") 
+```
+
+
+
+
 
