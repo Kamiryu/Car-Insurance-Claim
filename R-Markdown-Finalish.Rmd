@@ -220,3 +220,19 @@ ggpairs(cars_final[,c(1:4,6)])+
 ```
 
 We can see from the plots above that our remaining variables are not highly correlated between them.
+
+
+
+```{r}
+proportions(table(cars_final$is_claim))
+
+set.seed(1)
+index <- sample(nrow(cars_final),nrow(cars_final)*0.60)
+cars_train = cars_final[index,]
+cars_validation = cars_final[-index,]
+
+proportions(table(cars_train$is_claim))
+proportions(table(cars_validation$is_claim))
+
+```
+
