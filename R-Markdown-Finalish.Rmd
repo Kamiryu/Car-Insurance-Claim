@@ -9,22 +9,214 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Libraries
+```{r}
+library(naniar)       # Missing values
+library(ggplot2)      # Graphics
+library(dplyr)
+library(tidyr)
+library(randomForest) # Random forest
+library(corrplot)     # Plot correlations
+library(knitr) #Table presentation
+library(GGally) # Correlation and scatter plots
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+#Accelerating computations by setting CPU to work in parallel
+library(doParallel)
+cores = detectCores()
+cl <- makeCluster(cores-1)
+registerDoParallel(cl)
 ```
 
-## Including Plots
+```{r,warning=FALSE}
+cars <- read.csv("train.csv", sep=",", header = TRUE)
 
-You can also embed plots, for example:
+str(cars)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+cars <- cars[,c(-1)] # Drop ID
+
+sapply(cars,function(x) length(unique(x))) # Check unique values
+
+gg_miss_var(cars, show_pct = TRUE) # See if any missing value
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+#Histograms
+cars %>% select(1:3, 5:6,13,20:21,23,25:29,42:43) %>% gather() %>% 
+ ggplot(aes(value)) + 
+ facet_wrap(~ key, scales = "free") + 
+ geom_histogram(color = "black", fill = "#6baed6") + 
+ theme_minimal()
+
+
+# Barcharts
+cars %>% select(4,7:12,14:19,22,24,30:41) %>% gather() %>%
+ ggplot(aes(x = value)) +
+ facet_wrap(~ key, scales = "free") +
+ geom_bar(color = "black", fill = "#6baed6") +
+ theme_minimal()
+```
+
+```{r}
+cars_numeric <- cars[,c(1:3, 5:6,13,20:21,23,25:29,42)] # Only numerical values
+
+# Correlations
+cor2 <- data.frame(round(cor(cars_numeric),3))
+cor2
+
+# Plot correlations
+corrplot(as.matrix(cor2), order = 'AOE', type = 'lower', tl.pos = "lt",tl.cex = 0.5,)
+corrplot(as.matrix(cor2), add = TRUE, type = 'upper', method = 'ellipse', order = 'AOE',
+        diag = FALSE, tl.pos = 'n', cl.pos = 'n',tl.cex = 0.5)
+
+# Dropping variables based on correlation
+cars_reduced <- cars[,-c(20,13,23,25,29)]
+```
+
+```{r}
+rf_fit <- randomForest(as.factor(cars$is_claim) ~ ., # Fit a random forest with reduced set
+                       data = cars_reduced,
+                       ntree = 500,
+                       mtry = 4,
+                       importance = TRUE)
+
+
+rf_fit$importance[,3]
+
+sort(round(rf_fit$importance[,4],3), decreasing = TRUE)
+
+varImpPlot(rf_fit, type = 1)
+
+cars_reduced_rf <- cars_reduced[,c("policy_tenure","age_of_car","age_of_policyholder",
+                        "population_density","area_cluster","height",
+                        "width","segment","model","length","engine_type",
+                        "max_torque","max_power","ncap_rating","cylinder")]
+```
+
+Variable importance: <https://plos.figshare.com/articles/figure/Variable_importance_plot_mean_decrease_accuracy_and_mean_decrease_Gini_/12060105/1#>:\~:text=The%20mean%20decrease%20in%20Gini,the%20variable%20in%20the%20model.
+
+
+```{r}
+# Correlations
+cor3 <- data.frame(round(cor(cars_reduced_rf[,c(1:4,6,7,10,14,15)]),3))
+cor3
+
+corrplot(as.matrix(cor3), order = 'AOE', type = 'lower', tl.pos = "lt",tl.cex = 0.5,)
+corrplot(as.matrix(cor3), add = TRUE, type = 'upper', method = 'ellipse', order = 'AOE',
+        diag = FALSE, tl.pos = 'n', cl.pos = 'n',tl.cex = 0.5)
+
+
+
+# Filtering variables based on domain knowledge and correlations
+
+cars_reduced <- cars_reduced_rf[,-c( 7,8,11,12,13,14,15)]
+cars_final <- cbind(cars_reduced, cars$is_claim)
+colnames(cars_final)[9] <- "is_claim"
+```
+
+```{r}
+# We drop height and weight since model defines these features.
+
+logistic_regression_final_variables <- glm(is_claim~., family=binomial(link='logit')
+, data= cars_final[,-c(5,7)])
+
+summary(logistic_regression_final_variables)
+
+```
+
+
+We can see that  the coefficient NA for cluster9 is symptomatic of a multicolinearity issue. Therefore, we remove area cluster and keep population instead.
+```{r}
+logistic_regression_final_variables <- glm(is_claim~., family=binomial(link='logit')
+, data= cars_final[,-c(5,7,4)])
+
+summary(logistic_regression_final_variables)
+```
+
+```{r}
+cars_final <- cars_final[,-c(5,6,8)]
+kable(head(cars_final), format="markdown")
+```
+
+Based on our previous analysis, our finals explanatory variables would be: policy_tenure, age_of_car, age_of_policyholder, model and population_density.
+
+
+# EDA
+
+```{r}
+#Histograms
+cars_final %>% select(1:4,6) %>% gather() %>% 
+ ggplot(aes(value)) + 
+ facet_wrap(~ key, scales = "free") + 
+ geom_histogram(color = "black", fill = "#69b3a2") + 
+  theme(plot.title=element_text(hjust=0.5),
+        panel.background = element_rect(fill = "white"),
+        panel.grid.major.y = element_line(color = "grey98")) 
+```
+
+```{r}
+# Barcharts
+cars_final %>% select(5)  %>% gather() %>%
+ ggplot(aes(x = value)) +
+ facet_wrap(~ key, scales = "free") +
+ geom_bar(color = "black", fill = "#69b3a2") +
+  theme(plot.title=element_text(hjust=0.5),
+        panel.background = element_rect(fill = "white"),
+        panel.grid.major.y = element_line(color = "grey98"))
+
+
+# boxplot
+cars_final %>% select(1:4)  %>% gather() %>%
+ ggplot(aes(x = value,y="")) +
+  
+  facet_wrap(~ key, scales = "free")+
+                   # add horizontal line to "whiskers" of boxplot
+  geom_boxplot(fill = "#6baed6", width = 0.5) + 
+  stat_boxplot(geom = "errorbar", width = 0.2) +# plot boxplot
+  stat_summary(fun.y=mean, colour="darkred", geom="point", shape=18, size=3,show_guide = FALSE)+
+  theme_classic() +
+  theme(plot.title=element_text(hjust=0.5),
+        panel.background = element_rect(fill = "white"),
+        panel.grid.major.y = element_line(color = "grey98")) 
+
+
+```
+
+We can see that the distribution of the data is not symmetrical. However, since the data is already normalized, we are not able to do a log transform on the data except for population density.
+
+```{r}
+cars_final$population_density <- log(cars_final$population_density)
+
+normalized.pop <- (cars_final$population_density - min (cars_final$population_density)) / (max(cars_final$population_density)-min(cars_final$population_density))
+
+cars_final$population_density <- as.vector(normalized.pop)
+```
+
+```{r}
+# boxplot
+cars_final %>% select(1:4)  %>% gather() %>%
+ ggplot(aes(x = value,y="")) +
+  
+  facet_wrap(~ key, scales = "free")+
+                   # add horizontal line to "whiskers" of boxplot
+  geom_boxplot(fill = "#6baed6", width = 0.5) + 
+  stat_boxplot(geom = "errorbar", width = 0.2) +# plot boxplot
+  stat_summary(fun.y=mean, colour="darkred", geom="point", shape=18, size=3,show_guide = FALSE)+
+  theme_classic() +
+  theme(plot.title=element_text(hjust=0.5),
+        panel.background = element_rect(fill = "white"),
+        panel.grid.major.y = element_line(color = "grey98")) 
+```
+
+With the log transformation on population_density, the distribution has become a little bit more centered and symmetrical.
+
+```{r}
+kable(summary(cars_final), format="markdown")
+```
+
+```{r}
+ggpairs(cars_final[,c(1:4,6)])+
+  theme_bw()
+```
+
+We can see from the plots above that our remaining variables are not highly correlated between them.
