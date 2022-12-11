@@ -20,9 +20,11 @@ library(randomForest) # Random forest
 library(corrplot)     # Plot correlations
 library(knitr) #Table presentation
 library(GGally) # Correlation and scatter plots
+library(class)       # knn
+library(rpart)       # trees
+library(caret)       # preprocess data
 
-#Accelerating computations by setting CPU to work in parallel
-library(doParallel)
+library(doParallel)#Accelerating computations by setting CPU to work in parallel
 cores = detectCores()
 cl <- makeCluster(cores-1)
 registerDoParallel(cl)
