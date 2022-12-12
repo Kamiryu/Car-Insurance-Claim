@@ -314,8 +314,9 @@ fourfoldplot(cmk$table, color = c("cyan", "pink"),
 ```{r}
 # Classification tree
 tree_fit <- rpart(cars_train$is_claim ~.,
-                   data = cars_train, # Data set
-                   method = "class") # Method: Classification
+                  data = cars_train, # Data set
+                  cp = 0.001,
+                  method = "class") # Method: Classification
 
 
 rpart.plot(tree_fit) # Plot the resulting tree
@@ -364,6 +365,7 @@ fourfoldplot(conf_matrix_tree_v$table,
 
 
 ```{r}
+
 cp_optimal <- printcp(tree_fit)[
   which.min(printcp(tree_fit)[,'xerror']),
   'CP'] # Returns optimal CP value when checking xerror
@@ -372,6 +374,7 @@ cp_optimal <- printcp(tree_fit)[
 pruned.tree <- prune(tree_fit, cp= cp_optimal) # Prune the train model with best cp
 
 
+# Cross-validation
 
 table_cp <- printcp(tree_fit) # Save cps
 
@@ -401,26 +404,7 @@ rows_small_errors_std # Display and chose the best size
 ```
 
 ```{r}
-pred_tree_tr_pruned <- predict(pruned.tree, # Pruned tree
-                         cars_train[,c(-6)], # Train set
-                         type ="class")
-
-# Confusion matrix for classification tree with train set
-conf_matrix_tree_tr <- confusionMatrix(
-  pred_tree_tr_pruned,
-  factor(cars_train$is_claim),
-  positive = "1")
-
-# plot confusion matrix
-fourfoldplot(conf_matrix_tree_tr$table,
-             color = c("cyan", "pink"),
-             conf.level = 0,
-             margin = 1,
-             main = "Confusion Matrix for Classification Tree
-             (pruned) for train set") 
-
-
-
+# Pruning on Validation data
 pred_tree_v_pruned <- predict(pruned.tree, # Pruned tree
                          cars_validation[,c(-6)],# Validation set
                          type ="class")
