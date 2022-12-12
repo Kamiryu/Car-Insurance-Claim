@@ -313,6 +313,7 @@ fourfoldplot(cmk$table, color = c("cyan", "pink"),
 
 ```{r}
 # Classification tree
+
 tree_fit <- rpart(cars_train$is_claim ~.,
                   data = cars_train, # Data set
                   cp = 0.001,
@@ -362,10 +363,9 @@ fourfoldplot(conf_matrix_tree_v$table,
              main = "Confusion Matrix for Classification
              Tree for validation set") 
 ```
-
+Plotting the classification tree with trained data results in only 1 leaf. Such an output is surprising and shows that the model could not find any rules to explain the classification of positive outcomes. Let's continue by using an optimal cp and by pruning the tree.
 
 ```{r}
-
 cp_optimal <- printcp(tree_fit)[
   which.min(printcp(tree_fit)[,'xerror']),
   'CP'] # Returns optimal CP value when checking xerror
@@ -393,15 +393,11 @@ rows_small_errors_std # Display and chose the best size
 
 # To be continued with best size...
 
-
-# The fitted tree has only one leaf and thus I get an error with the following code:
-
-# library(rattle)        # Enhanced tree: fancyRpartPlot
-# fancyRpartPlot(pruned.tree, # Graph model
-#                uniform=TRUE,
-#                main="Pruned Classification Tree
-# 
 ```
+We try to look at the lowest cp value to prune the tree. The found value equals 0 and translates again an issue.
+It is known that we should not choose a tree based on it's cp, but we should choose a tree size. Ordinarilly, we would like to have a small tree with a small cp. Such a tree would avoid overfitting. Unfortunately, the resulting size for our case is 0.
+
+We conclude that a tree of size 0 might express some issues in the data used. The issues could be in the observations themselves or in the variables used.
 
 ```{r}
 # Pruning on Validation data
@@ -423,7 +419,7 @@ fourfoldplot(conf_matrix_tree_v$table,
              main = "Confusion Matrix for Classification
              Tree (pruned) for validation set") 
 ```
-
+The confusion matrix has classified correctly every observation for cases where the explanatory variable is negative. However, we see that it has classified even the positive claims. The model could be bad and chose to classify every observation as 0 since we noticed no rules in the fitted tree. Therefor, we should be careful and reluctant to state that the model is good at classifying negative claims.
 
 
 
