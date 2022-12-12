@@ -220,8 +220,9 @@ kable(summary(cars_final), format="markdown")
 ```
 
 ```{r}
-ggpairs(cars_final[,c(1:4,6)])+
-  theme_bw()
+# Commented for time computing
+# ggpairs(cars_final[,c(1:4,6)])+
+#   theme_bw()
 ```
 
 We can see from the plots above that our remaining variables are not highly correlated between them.
@@ -312,63 +313,135 @@ fourfoldplot(cmk$table, color = c("cyan", "pink"),
 
 ```{r}
 # Classification tree
-
-pred_tree_tr <- rpart(cars_train$is_claim ~.,
+tree_fit <- rpart(cars_train$is_claim ~.,
                    data = cars_train, # Data set
                    method = "class") # Method: Classification
 
-rpart.plot(pred_tree_tr) # Plot the tree
 
-pred_tree_tr_proba <- predict(pred_tree_tr, cars_train[,c(-6)])[,2] # Take the columns for success prediction
-
-pred_tree_tr_outcome <- ifelse(pred_tree_tr_proba >= 0.5,1,0) # Use cutoff value at 0.5 to determine success
+rpart.plot(tree_fit) # Plot the resulting tree
 
 
+# Predict values for train set
+pred_tree_tr <- predict(tree_fit,
+                         cars_train[,c(-6)],
+                         type ="class")
 
-pred_tree_v_proba <- predict(pred_tree_tr, cars_validation[,c(-6)])[,2]
-# Take the columns for success prediction
-
-pred_tree_v_outcome <- ifelse(pred_tree_v_proba >= 0.5,1,0) # Use cutoff value at 0.5 to determine success
-```
-
-```{r}
-error_train <- round(accuracy(
-  pred_tree_tr_outcome,
-  cars_train$is_claim),# Actual price
-  3) # Rounded digit 
-
-error_validation <- round(accuracy(
-  pred_tree_v_outcome,# Fitted value
-  cars_validation$is_claim),
-  3) # Actual state 
+# Predict values for validation set
+pred_tree_v_tr <- predict(tree_fit,
+                         cars_validation[,c(-6)],
+                         type ="class")
 
 
-# RMSE 
-rmse_tree<- data.frame(
-  rbind(error_train[,1:3],
-        error_validation)[,1:3]) # Combine RMS errors into a data frame
 
-rownames(rmse_tree) <- c("Train", "Validation") # Rename columns
+# Confusion matrix for classification tree with train set
+conf_matrix_tree_tr <- confusionMatrix(
+  pred_tree_tr,
+  factor(cars_train$is_claim),
+  positive = "1")
 
-rmse_tree = kable(rmse_tree,  caption = "Error table for tree classification")
+# plot confusion matrix
+fourfoldplot(conf_matrix_tree_tr$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for Classification Tree
+             for train set") 
 
-
-rmse_tree # Display RMSE
-```
-```{r}
-# Confusion matrix for classification tree
-conf_matrix_tree <- confusionMatrix(
-  factor(pred_tree_v_outcome),
+# Confusion matrix for classification tree with validation set
+conf_matrix_tree_v <- confusionMatrix(
+  pred_tree_v_tr,
   factor(cars_validation$is_claim),
   positive = "1")
 
 # plot confusion matrix
-fourfoldplot(conf_matrix_tree$table,
+fourfoldplot(conf_matrix_tree_v$table,
              color = c("cyan", "pink"),
              conf.level = 0,
              margin = 1,
-             main = "Confusion Matrix for KNN") 
+             main = "Confusion Matrix for Classification
+             Tree for validation set") 
 ```
+
+
+```{r}
+cp_optimal <- printcp(tree_fit)[
+  which.min(printcp(tree_fit)[,'xerror']),
+  'CP'] # Returns optimal CP value when checking xerror
+
+
+pruned.tree <- prune(tree_fit, cp= cp_optimal) # Prune the train model with best cp
+
+
+
+table_cp <- printcp(tree_fit) # Save cps
+
+rows_small_errors_std <- head(order(table_cp[,5]),6) # Know the rows (folds) having  the smallest standard errors of the estimates
+
+table_error <- matrix(table_cp[,4] + table_cp[,5]) # Sum the std error and the error
+
+table_error <- cbind(table_cp[,1], # Include CP
+                     table_cp[,2], # Include nsplit
+                     table_error,  # Error + std error
+                     table_cp[,5]) # Std error
+
+rows_small_errors_std <- head(sort(table_error[,4]),6) # Know the rows (folds) having  the smallest std error
+
+rows_small_errors_std # Display and chose the best size
+
+# To be continued with best size...
+
+
+# The fitted tree has only one leaf and thus I get an error with the following code:
+
+# library(rattle)        # Enhanced tree: fancyRpartPlot
+# fancyRpartPlot(pruned.tree, # Graph model
+#                uniform=TRUE,
+#                main="Pruned Classification Tree
+# 
+```
+
+```{r}
+pred_tree_tr_pruned <- predict(pruned.tree, # Pruned tree
+                         cars_train[,c(-6)], # Train set
+                         type ="class")
+
+# Confusion matrix for classification tree with train set
+conf_matrix_tree_tr <- confusionMatrix(
+  pred_tree_tr_pruned,
+  factor(cars_train$is_claim),
+  positive = "1")
+
+# plot confusion matrix
+fourfoldplot(conf_matrix_tree_tr$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for Classification Tree
+             (pruned) for train set") 
+
+
+
+pred_tree_v_pruned <- predict(pruned.tree, # Pruned tree
+                         cars_validation[,c(-6)],# Validation set
+                         type ="class")
+
+# Confusion matrix for classification tree with validation set
+conf_matrix_tree_v <- confusionMatrix(
+  pred_tree_v_pruned,
+  factor(cars_validation$is_claim),
+  positive = "1")
+
+# plot confusion matrix
+fourfoldplot(conf_matrix_tree_v$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for Classification
+             Tree (pruned) for validation set") 
+```
+
+
+
 
 
 
