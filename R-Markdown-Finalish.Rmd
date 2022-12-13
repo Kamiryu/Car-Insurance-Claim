@@ -208,6 +208,12 @@ cars_final$population_density <- log(cars_final$population_density)
 normalized.pop <- (cars_final$population_density - min (cars_final$population_density)) / (max(cars_final$population_density)-min(cars_final$population_density))
 
 cars_final$population_density <- as.vector(normalized.pop)
+
+
+# Normalizing policy tenure
+normalized.policy <- (cars_final$policy_tenure - min (cars_final$policy_tenure)) / (max(cars_final$policy_tenure)-min(cars_final$policy_tenure))
+
+cars_final$policy_tenure <- as.vector(normalized.policy)
 ```
 
 ```{r}
