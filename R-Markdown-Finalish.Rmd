@@ -228,6 +228,27 @@ kable(summary(cars_final), format="markdown")
 
 We can see from the plots above that our remaining variables are not highly correlated between them.
 
+```{r}
+#boxplot for the distribution of 0 1 
+df = cars_final[, -5] 
+df$is_claim <- as.factor(df$is_claim)
+library(reshape2)
+df.melt = melt(df)
+
+df.boxplot = ggplot(df.melt, aes(y=value,is_claim)) + 
+  geom_boxplot() + 
+  facet_wrap(~variable, scales = "free", ncol=3) + theme_classic() + xlab("Variables")
+
+df.boxplot
+
+```
+
+```{r}
+barplot(prop.table(table(cars$is_claim)),
+        col = rainbow(2),
+        ylim = c(0, 1),
+        main = "Class Distribution")
+```
 
 
 ```{r}
