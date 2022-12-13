@@ -517,7 +517,7 @@ HosLem.test(cars_final$is_claim, fitted(cars.lg))
 
 
 
-
+data mining is the best 
 
 # All methods comparison
 
