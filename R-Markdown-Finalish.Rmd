@@ -32,6 +32,9 @@ library(rpart)       # trees
 library(caret)       # preprocess data
 library(rpart.plot)     # plot trees
 library(forecast)       # accuracy
+library(neuralnet)    # Neural netwok
+
+
 source("PlotResidLogist.R") # Deviance Residuals
 source("HosLemTest.R") # Hosmer–Lemeshow goodness of fit
 library(doParallel)#Accelerating computations by setting CPU to work in parallel
@@ -198,8 +201,10 @@ cars_final %>% select(1:4)  %>% gather() %>%
 We can see that the distribution of the data is not symmetrical. However, since the data is already normalized, we are not able to do a log transform on the data except for population density.
 
 ```{r}
+# Adjust scale with log for population density
 cars_final$population_density <- log(cars_final$population_density)
 
+# Normalizing population_density
 normalized.pop <- (cars_final$population_density - min (cars_final$population_density)) / (max(cars_final$population_density)-min(cars_final$population_density))
 
 cars_final$population_density <- as.vector(normalized.pop)
@@ -473,6 +478,88 @@ cmk <- confusionMatrix(knn.pred.valid,valid_dummy[,16])    #confusion matrix
 fourfoldplot(cmk$table, color = c("cyan", "pink"),
              conf.level = 0, margin = 1, main = "Confusion Matrix for KNN")     # plot confusion ma
 cmk
+```
+
+## Neural Network
+Common practice is to use 1 hidden layer for fitting neural networks.
+
+```{r}
+summary(train_new)
+```
+
+### 1 Hidden layer and 2 nodes
+```{r}
+# run Neural Network (N.N.) with 1 hidden layer and 2 nodes
+nn_1H_2N <- neuralnet(is_claim ~ .,
+                    data = train_new,
+                    hidden = 2) # 1 hidden layer of 2 nodes
+
+plot(nn_1H_2N, rep="best")
+
+
+
+# Predict the output on validation set
+validation_prediction_1H_2N <- predict(nn_1H_2N,
+                                      valid_dummy[,-16],
+                                      type = "class")
+
+validation_prediction_1H_2N_binary <-
+  ifelse(validation_prediction_1H_2N[,1]
+         >= 0.5, 0, 1) # Transform probabilities as binary outcome 
+
+
+
+# Confusion matrix for classification tree with validation set
+conf_matrix_1H2N_valid <- confusionMatrix(
+  factor(validation_prediction_1H_2N_binary),
+  factor(valid_dummy$is_claim), # change dataset
+  positive = "1")
+
+# plot confusion matrix
+fourfoldplot(conf_matrix_1H2N_valid$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for Neural Network
+             1 hidden layer of 2 nodes for validation set") 
+```
+### 1 Hidden layer and 3 nodes
+
+```{r}
+# run Neural Network (N.N.) with 1 hidden layer and 3 nodes
+nn_1H_3N <- neuralnet(is_claim ~.,
+                    data = train_new,
+                    hidden = 3) # 1 hidden layer of 3 nodes
+
+plot(nn_1H_3N, rep="best")
+
+
+
+# Predict the output on validation set
+validation_prediction_1H_3N <- predict(nn_1H_3N,
+                                      valid_dummy[,-16],
+                                      type = "class")
+
+validation_prediction_1H_3N_binary <-
+  ifelse(validation_prediction_1H_3N[,1]
+         >= 0.5, 0, 1) # Transform probabilities as binary outcome 
+
+
+
+# Confusion matrix for classification tree with validation set
+conf_matrix_1H3N_valid <- confusionMatrix(
+  factor(validation_prediction_1H_3N_binary),
+  factor(valid_dummy$is_claim), # change dataset
+  positive = "1")
+
+# plot confusion matrix
+fourfoldplot(conf_matrix_1H3N_valid$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for Neural Network
+             1 hidden layer of 3 nodes for validation set") 
+
 ```
 
 ## Logistic Regression
