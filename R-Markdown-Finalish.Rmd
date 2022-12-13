@@ -1,8 +1,16 @@
 ---
 title: "Car Insurance Claims"
-author: "Fabien Roduit"
+author: "The miners"
 date: "2022-12-11"
-output: html_document
+output:
+  html_document:
+    theme: paper
+    highlight: tango
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    toc_depth: 4
+
 ---
 
 ```{r setup, include=FALSE}
@@ -32,6 +40,8 @@ cores = detectCores()
 cl <- makeCluster(cores-1)
 registerDoParallel(cl)
 ```
+
+# Introduction
 
 ```{r,warning=FALSE}
 cars <- read.csv("train.csv", sep=",", header = TRUE)
@@ -154,7 +164,7 @@ Based on our previous analysis, our finals explanatory variables would be: polic
 cars_final %>% select(1:4,6) %>% gather() %>% 
  ggplot(aes(value)) + 
  facet_wrap(~ key, scales = "free") + 
- geom_histogram(color = "black", fill = "#69b3a2") + 
+ geom_histogram(color = "black", fill = "#6baed6") + 
   theme(plot.title=element_text(hjust=0.5),
         panel.background = element_rect(fill = "white"),
         panel.grid.major.y = element_line(color = "grey98")) 
@@ -165,7 +175,7 @@ cars_final %>% select(1:4,6) %>% gather() %>%
 cars_final %>% select(5)  %>% gather() %>%
  ggplot(aes(x = value)) +
  facet_wrap(~ key, scales = "free") +
- geom_bar(color = "black", fill = "#69b3a2") +
+ geom_bar(color = "black", fill = "#6baed6") +
   theme(plot.title=element_text(hjust=0.5),
         panel.background = element_rect(fill = "white"),
         panel.grid.major.y = element_line(color = "grey98"))
@@ -244,22 +254,7 @@ df.boxplot
 
 ```
 
-```{r}
-barplot(prop.table(table(cars$is_claim)),
-        col = rainbow(2),
-        ylim = c(0, 1),
-        main = "Class Distribution")
-```
 
-
-```{r}
-df.boxplot = ggplot(df.melt, aes(y=value,is_claim)) + 
-  geom_boxplot() + 
-  facet_wrap(~variable, scales = "free", ncol=3) + theme_classic() + xlab("Variables")
-
-df.boxplot
-
-```
 
 ```{r}
 barplot(prop.table(table(cars$is_claim)),
@@ -273,7 +268,6 @@ When the proportions of the different classes in a classification problem are im
 To address this issue, we can re-sample the data to create a more balanced distribution of the classes. This can be done using techniques such as undersampling (removing examples from the majority class) or oversampling . These techniques can help the model to better learn from the minority class and improve its performance on it.
 
 ```{r}
-proportions(table(cars_final$is_claim))
 
 set.seed(1)
 index <- sample(nrow(cars_final),nrow(cars_final)*0.60)
@@ -286,54 +280,47 @@ proportions(table(cars_validation$is_claim))
 ```
 
 
-
-```{r}
-# Add dummy variables 
-cars_final$model <- as.factor(cars_final$model)                       # change variable format to factor 
-
-dummies <- dummyVars(~ ., data = cars_final)                             # create object for dummy variables
-cars_final_dummy <- as.data.frame(predict(dummies, newdata = cars_final))      # apply dummies to data
-
-cars_final$is_claim <- as.factor(cars_final$is_claim)                # change variable format to factor
-cars_final_dummy$is_claim <- as.factor(cars_final_dummy$is_claim) 
-
-head(cars_final_dummy)                                                  # resulting in 11
-str(cars_final_dummy)
-
-train_dummy <- cars_final_dummy[index,] # training set with dummies  
-valid_dummy <- cars_final_dummy[-index,] #validation set with dummies
-train_new <- downSample(train_dummy[,-16],train_dummy$is_claim,yname = "is_claim") # undersampling for having same probation 
-str(train_new)
-proportions(table(train_new$is_claim))
-
-summary(train_new$is_claim)
-
-```
+# Predictive analytics
 
 ## Classification tree
 
 ```{r}
-cars_train[,6] <- as.factor(cars_train$is_claim)
-train_downsampling <- downSample(cars_train[,-6],cars_train$is_claim,yname = "is_claim")
 # Classification tree
 
 tree_fit <- rpart(cars_train$is_claim ~.,
                   data = cars_train, # Data set
                   cp = 0.001,
                   method = "class") # Method: Classification
+
+rpart.plot(tree_fit)
+
+# Predict values for train set
+pred_tree_fit <- predict(tree_fit,
+                         cars_train[,c(-6)],
+                         type ="class")
+
+
+confusionMatrix(pred_tree_fit,
+  factor(cars_train$is_claim),
+  positive = "1")
 ```
 
-Plotting the classification tree with the trained data results in only 1 leaf. Such an output is surprising. The problem could lies in the fact that the explaind variable is inbalanced in our dataset. Let's try again with a downsample dataset.
+Plotting the classification tree with the trained data results in only 1 leaf. Also, by looking at the confusion matrix, we notice that model predicted every observation as is_claim = 0. Such an output is expected because the unbalance of the outcome variable. So, let's try again with a downsampled train dataset.
 
 ```{r}
+# Downsample 
+cars_train[,6] <- as.factor(cars_train$is_claim)
+train_downsampling <- downSample(cars_train[,-6],cars_train$is_claim,yname = "is_claim")
+
+tree_fit <- rpart(train_downsampling$is_claim ~.,
+                  data = train_downsampling, # Data set
+                  cp = 0.001,
+                  method = "class") # Method: Classification
+
 
 rpart.plot(tree_fit) # Plot the resulting tree
 
 
-# Predict values for train set
-pred_tree_tr <- predict(tree_fit,
-                         cars_train[,c(-6)],
-                         type ="class")
 
 # Predict values for validation set
 pred_tree_v_tr <- predict(tree_fit,
@@ -342,19 +329,6 @@ pred_tree_v_tr <- predict(tree_fit,
 
 
 
-# Confusion matrix for classification tree with train set
-conf_matrix_tree_tr <- confusionMatrix(
-  pred_tree_tr,
-  factor(cars_train$is_claim),
-  positive = "1")
-
-# plot confusion matrix
-fourfoldplot(conf_matrix_tree_tr$table,
-             color = c("cyan", "pink"),
-             conf.level = 0,
-             margin = 1,
-             main = "Confusion Matrix for Classification Tree
-             for train set") 
 
 # Confusion matrix for classification tree with validation set
 conf_matrix_tree_v <- confusionMatrix(
@@ -371,7 +345,7 @@ fourfoldplot(conf_matrix_tree_v$table,
              Tree for validation set") 
 ```
 
-Plotting the classification tree with trained data results in only 1 leaf. Such an output is surprising and shows that the model could not find any rules to explain the classification of positive outcomes. Let's continue by using an optimal cp and by pruning the tree.
+We see that using a balanced data set solved our issue and display a full grown tree.
 
 
 ```{r}
@@ -433,6 +407,30 @@ fourfoldplot(conf_matrix_tree_v$table,
 The confusion matrix has classified correctly every observation for cases where the explanatory variable is negative. However, we see that it has classified even the positive claims. The model could be bad and chose to classify every observation as 0 since we noticed no rules in the fitted tree. Therefor, we should be careful and reluctant to state that the model is good at classifying negative claims.
 
 ## KNN
+
+```{r}
+# Add dummy variables 
+cars_final$model <- as.factor(cars_final$model)                       # change variable format to factor 
+
+dummies <- dummyVars(~ ., data = cars_final)                             # create object for dummy variables
+cars_final_dummy <- as.data.frame(predict(dummies, newdata = cars_final))      # apply dummies to data
+
+cars_final$is_claim <- as.factor(cars_final$is_claim)                # change variable format to factor
+cars_final_dummy$is_claim <- as.factor(cars_final_dummy$is_claim) 
+
+head(cars_final_dummy)                                                  # resulting in 11
+str(cars_final_dummy)
+
+train_dummy <- cars_final_dummy[index,] # training set with dummies  
+valid_dummy <- cars_final_dummy[-index,] #validation set with dummies
+train_new <- downSample(train_dummy[,-16],train_dummy$is_claim,yname = "is_claim") # undersampling for having same probation 
+str(train_new)
+proportions(table(train_new$is_claim))
+
+summary(train_new$is_claim)
+
+```
+
 ```{r}
 # Find optimal k
 
@@ -516,3 +514,12 @@ HosLem.test(cars_final$is_claim, fitted(cars.lg))
 
 
 ......... [ In progress, to continue and modify ]
+
+
+
+
+
+# All methods comparison
+
+# Conclusions
+
