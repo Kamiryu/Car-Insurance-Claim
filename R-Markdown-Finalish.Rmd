@@ -10,15 +10,14 @@ output:
     toc_float: true
     toc_collapsed: true
     toc_depth: 4
-
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
 Libraries
+
 ```{r}
 library(naniar)       # Missing values
 library(ggplot2)      # Graphics
@@ -111,7 +110,6 @@ cars_reduced_rf <- cars_reduced[,c("policy_tenure","age_of_car","age_of_policyho
 
 Variable importance: <https://plos.figshare.com/articles/figure/Variable_importance_plot_mean_decrease_accuracy_and_mean_decrease_Gini_/12060105/1#>:\~:text=The%20mean%20decrease%20in%20Gini,the%20variable%20in%20the%20model.
 
-
 ```{r}
 # Correlations
 cor3 <- data.frame(round(cor(cars_reduced_rf[,c(1:4,6,7,10,14,15)]),3))
@@ -140,8 +138,8 @@ summary(logistic_regression_final_variables)
 
 ```
 
+We can see that the coefficient NA for cluster9 is symptomatic of a multicolinearity issue. Therefore, we remove area cluster and keep population instead.
 
-We can see that  the coefficient NA for cluster9 is symptomatic of a multicolinearity issue. Therefore, we remove area cluster and keep population instead.
 ```{r}
 logistic_regression_final_variables <- glm(is_claim~., family=binomial(link='logit')
 , data= cars_final[,-c(5,7,4)])
@@ -155,7 +153,6 @@ kable(head(cars_final), format="markdown")
 ```
 
 Based on our previous analysis, our finals explanatory variables would be: policy_tenure, age_of_car, age_of_policyholder, model and population_density.
-
 
 # EDA
 
@@ -254,8 +251,6 @@ df.boxplot
 
 ```
 
-
-
 ```{r}
 barplot(prop.table(table(cars$is_claim)),
         col = rainbow(2),
@@ -263,6 +258,7 @@ barplot(prop.table(table(cars$is_claim)),
         main = "Class Distribution") # outcome variable distribution 
 prop.table(table(cars$is_claim))
 ```
+
 When the proportions of the different classes in a classification problem are imbalanced (in our case 1 present about 6% from is_claim), it means that one class (the majority class) is much more frequent than the other class(es) (the minority class(es)). This can cause the model to have a high performance (e.g. high F1-score) on the majority class and low performance on the minority class.
 
 To address this issue, we can re-sample the data to create a more balanced distribution of the classes. This can be done using techniques such as undersampling (removing examples from the majority class) or oversampling . These techniques can help the model to better learn from the minority class and improve its performance on it.
@@ -278,7 +274,6 @@ proportions(table(cars_train$is_claim))
 proportions(table(cars_validation$is_claim))
 
 ```
-
 
 # Predictive analytics
 
@@ -347,20 +342,24 @@ fourfoldplot(conf_matrix_tree_v$table,
 
 We see that using a balanced data set solved our issue and display a full grown tree.
 
+```{r}
+# Find the best cp with minimal xerror ||  /!\ code may need to be improved
+cp_minimal <- tree_fit$cptable[which.min(
+  tree_fit$cptable[,"CP"]), # Take lowest cp and Take lowest xerror
+  1]# CP column 
+
+pruned.tree <- prune(tree_fit, cp= cp_minimal) # Prune the train model with lowest cp
+```
+We try to look at the lowest cp value to prune the tree. The found value equals 0.001. The value is similar to the default value that we chosen to compute to fit the classification tree.
+
+It is known that we should not choose a tree based on it's cp, but we should choose rather a tree size. Ordinarily, we would like to have a small tree with a small cp. Such a tree would avoid overfitting.
 
 ```{r}
-cp_optimal <- printcp(tree_fit)[
-  which.min(printcp(tree_fit)[,'xerror']),
-  'CP'] # Returns optimal CP value when checking xerror
-
-
-pruned.tree <- prune(tree_fit, cp= cp_optimal) # Prune the train model with best cp
-
-
 # Cross-validation
 
-table_cp <- printcp(tree_fit) # Save cps
+table_cp <- pruned.tree$cptable # Save cps
 
+# DOES SOMEONE HAVE A BETTER METHOD ?
 rows_small_errors_std <- head(order(table_cp[,5]),6) # Know the rows (folds) having  the smallest standard errors of the estimates
 
 table_error <- matrix(table_cp[,4] + table_cp[,5]) # Sum the std error and the error
@@ -374,19 +373,27 @@ rows_small_errors_std <- head(sort(table_error[,4]),6) # Know the rows (folds) h
 
 rows_small_errors_std # Display and chose the best size
 
-# To be continued with best size...
+rows_small_errors <- head(sort(table_error[,3]),6) # Display the smallest standard errors
+rows_small_errors # Display
 
+kable(table_cp)
+
+best_cp <- table_cp[4,1]
 ```
 
-We try to look at the lowest cp value to prune the tree. The found value equals 0 and translates again an issue.
-It is known that we should not choose a tree based on it's cp, but we should choose a tree size. Ordinarilly, we would like to have a small tree with a small cp. Such a tree would avoid overfitting. Unfortunately, the resulting size for our case is 0.
+To choose a tree size we should look for the smallest minimum error within one std. error, also we want a small CP value.
 
-We conclude that a tree of size 0 might express some issues in the data used. The issues could be in the observations themselves or in the variables used.
+We see that the fourth observation where the nsplit = 3 and CP = 0.005 gives the best results. 
 
 ```{r}
-# Pruning on Validation data
+pruned.tree <- prune(tree_fit, cp = best_cp) # Prune the train model with best cp
+
+rpart.plot(pruned.tree) # Plot the tree with best size
+
+
+# Prediction on Validation data
 pred_tree_v_pruned <- predict(pruned.tree, # Pruned tree
-                         cars_validation[,c(-6)],# Validation set
+                         cars_validation[,c(-16)],# Validation set
                          type ="class")
 
 # Confusion matrix for classification tree with validation set
@@ -401,10 +408,9 @@ fourfoldplot(conf_matrix_tree_v$table,
              conf.level = 0,
              margin = 1,
              main = "Confusion Matrix for Classification
-             Tree (pruned) for validation set") 
+             Tree (best size) for validation set") 
 ```
 
-The confusion matrix has classified correctly every observation for cases where the explanatory variable is negative. However, we see that it has classified even the positive claims. The model could be bad and chose to classify every observation as 0 since we noticed no rules in the fitted tree. Therefor, we should be careful and reluctant to state that the model is good at classifying negative claims.
 
 ## KNN
 
@@ -469,12 +475,6 @@ fourfoldplot(cmk$table, color = c("cyan", "pink"),
 cmk
 ```
 
-
-
-
-
-
-
 ## Logistic Regression
 
 The logistic regression is a model that is also suited for binary response variables.
@@ -482,15 +482,14 @@ The logistic regression is a model that is also suited for binary response varia
 ### Classical logistic regression
 
 Building the model with a logit link function as it is usually the best suited one for the logistic regression
+
 ```{r}
 cars.lg <- glm(is_claim ~., data= cars_final, family=binomial(link="logit"))
 
 summary(cars.lg) # Displaying the resulting model
 ```
 
-From the dummies born from "model" variable, only the one corresponding to model=5 is statistically significant. H0 cannot be rejected for the betas estimate of population_density and age_of_policyholder. <br>
-<br>
-
+From the dummies born from "model" variable, only the one corresponding to model=5 is statistically significant. H0 cannot be rejected for the betas estimate of population_density and age_of_policyholder. <br> <br>
 
 ```{r}
 PlotResidLogist(cars.lg) # Deviance residuals
@@ -502,25 +501,18 @@ If we plot the deviance residuals, we notice that the positive residuals and neg
 anova(cars.lg, test="Chisq")
 ```
 
-According to the analysis of the deviance table, only population_density coul be unworth to be part of the model with p-value>0.05.
-
+According to the analysis of the deviance table, only population_density coul be unworth to be part of the model with p-value\>0.05.
 
 ```{r}
 HosLem.test(cars_final$is_claim, fitted(cars.lg))
 ```
 
-"Warning: ‘-’ not meaningful for factors" .... To remove from analysis probably
-
-
+"Warning: '-' not meaningful for factors" .... To remove from analysis probably
 
 ......... [ In progress, to continue and modify ]
 
-
-
-data mining is the best 
-next test 
+data mining is the best next test
 
 # All methods comparison
 
 # Conclusions
-
