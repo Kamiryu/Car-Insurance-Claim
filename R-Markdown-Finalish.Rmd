@@ -310,48 +310,6 @@ summary(train_new$is_claim)
 
 ```
 
-
-
-
-## KNN
-```{r}
-# Find optimal k
-
-# Data frame for k from 1 to 50 and respective accuracy
-accuracy <- data.frame(k = seq(1, 50, 1), overallaccuracy = rep(0, 50))  
-
-# Use for loop to find k with highest accuracy
-for (i in 1:50) {
-  knn.pred<-knn(train_new[,-16],valid_dummy[,-16],
-                cl=train_new[,16],k=i)
-  accuracy[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$overall[1]
-} # loop for calculating the accuracy fo k=50
-# Display accuracy for ten first k
-kable(accuracy[1:10,], row.names = F, caption = "Accuracy")
-```
-
-```{r}
-which(accuracy[,2] == max(accuracy[,2]))   # max accuracy
-```
-
-```{r}
-# Plot accuracy for different k
-ggplot(accuracy, aes(k, overallaccuracy)) + 
-  geom_line() + 
-  theme_minimal() +
-  labs (title = "K nearest neighbours: Overall accuracy vs K", 
-        y = "Accuracy", 
-        x = "k nearest neigbours" )
-```
-
-```{r}
-knn.pred.valid <- knn(train_new[, -16], valid_dummy[, -16], cl = train_new[, 16], k = 6 ,prob = T)     #prediction on validation data using best k=6
-cmk <- confusionMatrix(knn.pred.valid,valid_dummy[,16])    #confusion matrix 
-fourfoldplot(cmk$table, color = c("cyan", "pink"),
-             conf.level = 0, margin = 1, main = "Confusion Matrix for KNN")     # plot confusion ma
-cmk
-```
-
 ## Classification tree
 
 ```{r}
@@ -363,7 +321,11 @@ tree_fit <- rpart(cars_train$is_claim ~.,
                   data = cars_train, # Data set
                   cp = 0.001,
                   method = "class") # Method: Classification
+```
 
+Plotting the classification tree with the trained data results in only 1 leaf. Such an output is surprising. The problem could lies in the fact that the explaind variable is inbalanced in our dataset. Let's try again with a downsample dataset.
+
+```{r}
 
 rpart.plot(tree_fit) # Plot the resulting tree
 
@@ -408,7 +370,9 @@ fourfoldplot(conf_matrix_tree_v$table,
              main = "Confusion Matrix for Classification
              Tree for validation set") 
 ```
+
 Plotting the classification tree with trained data results in only 1 leaf. Such an output is surprising and shows that the model could not find any rules to explain the classification of positive outcomes. Let's continue by using an optimal cp and by pruning the tree.
+
 
 ```{r}
 cp_optimal <- printcp(tree_fit)[
@@ -439,6 +403,7 @@ rows_small_errors_std # Display and chose the best size
 # To be continued with best size...
 
 ```
+
 We try to look at the lowest cp value to prune the tree. The found value equals 0 and translates again an issue.
 It is known that we should not choose a tree based on it's cp, but we should choose a tree size. Ordinarilly, we would like to have a small tree with a small cp. Such a tree would avoid overfitting. Unfortunately, the resulting size for our case is 0.
 
@@ -464,7 +429,52 @@ fourfoldplot(conf_matrix_tree_v$table,
              main = "Confusion Matrix for Classification
              Tree (pruned) for validation set") 
 ```
+
 The confusion matrix has classified correctly every observation for cases where the explanatory variable is negative. However, we see that it has classified even the positive claims. The model could be bad and chose to classify every observation as 0 since we noticed no rules in the fitted tree. Therefor, we should be careful and reluctant to state that the model is good at classifying negative claims.
+
+## KNN
+```{r}
+# Find optimal k
+
+# Data frame for k from 1 to 50 and respective accuracy
+accuracy <- data.frame(k = seq(1, 50, 1), overallaccuracy = rep(0, 50))  
+
+# Use for loop to find k with highest accuracy
+for (i in 1:50) {
+  knn.pred<-knn(train_new[,-16],valid_dummy[,-16],
+                cl=train_new[,16],k=i)
+  accuracy[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$overall[1]
+} # loop for calculating the accuracy fo k=50
+# Display accuracy for ten first k
+kable(accuracy[1:10,], row.names = F, caption = "Accuracy")
+```
+
+```{r}
+which(accuracy[,2] == max(accuracy[,2]))   # max accuracy
+```
+
+```{r}
+# Plot accuracy for different k
+ggplot(accuracy, aes(k, overallaccuracy)) + 
+  geom_line() + 
+  theme_minimal() +
+  labs (title = "K nearest neighbours: Overall accuracy vs K", 
+        y = "Accuracy", 
+        x = "k nearest neigbours" )
+```
+
+```{r}
+knn.pred.valid <- knn(train_new[, -16], valid_dummy[, -16], cl = train_new[, 16], k = 6 ,prob = T)     #prediction on validation data using best k=6
+cmk <- confusionMatrix(knn.pred.valid,valid_dummy[,16])    #confusion matrix 
+fourfoldplot(cmk$table, color = c("cyan", "pink"),
+             conf.level = 0, margin = 1, main = "Confusion Matrix for KNN")     # plot confusion ma
+cmk
+```
+
+
+
+
+
 
 
 ## Logistic Regression
