@@ -412,7 +412,7 @@ conf_matrix_tree_v <- confusionMatrix(
   pred_tree_v_pruned,
   factor(cars_validation$is_claim),
   positive = "1")
-
+conf_matrix_tree_v
 # plot confusion matrix
 fourfoldplot(conf_matrix_tree_v$table,
              color = c("cyan", "pink"),
@@ -449,6 +449,7 @@ summary(train_new$is_claim)
 ```
 
 ```{r}
+set.seed(1)
 # Find optimal k
 
 # Data frame for k from 1 to 50 and respective accuracy
@@ -459,13 +460,24 @@ for (i in 1:50) {
   knn.pred<-knn(train_new[,-16],valid_dummy[,-16],
                 cl=train_new[,16],k=i)
   accuracy[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$overall[1]
-} # loop for calculating the accuracy fo k=50
-# Display accuracy for ten first k
-kable(accuracy[1:10,], row.names = F, caption = "Accuracy")
+} 
+# Data frame for k from 1 to 50 and respective specificity
+Specificity <-  data.frame(k = seq(1, 50, 1), overallspecificity = rep(0, 50))
+
+# Use for loop to find k with highest specificity
+for (i in 1:50) {
+  knn.pred<-knn(train_new[,-16],valid_dummy[,-16],
+                cl=train_new[,16],k=i)
+  Specificity[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$byClass[2]
+} 
+
+
 ```
 
 ```{r}
 which(accuracy[,2] == max(accuracy[,2]))   # max accuracy
+which(Specificity[,2] == max(Specificity[,2]))   # max specificity 
+
 ```
 
 ```{r}
@@ -476,11 +488,23 @@ ggplot(accuracy, aes(k, overallaccuracy)) +
   labs (title = "K nearest neighbours: Overall accuracy vs K", 
         y = "Accuracy", 
         x = "k nearest neigbours" )
-```
 
+# Plot specificity for different k
+ggplot(Specificity, aes(k, overallspecificity)) + 
+  geom_line() + 
+  theme_minimal() +
+  labs (title = "K nearest neighbours: Overall specificity vs K", 
+        y = "Accuracy", 
+        x = "k nearest neigbours" )
+
+
+```
+Since we are looking fo k which give us max optimum value of Specificity we chose k = 48  
+ 
 ```{r}
-knn.pred.valid <- knn(train_new[, -16], valid_dummy[, -16], cl = train_new[, 16], k = 6 ,prob = T)     #prediction on validation data using best k=6
+knn.pred.valid <- knn(train_new[, -16], valid_dummy[, -16], cl = train_new[, 16], k = 48 ,prob = T)     #prediction on validation data using best k=6
 cmk <- confusionMatrix(knn.pred.valid,valid_dummy[,16])    #confusion matrix 
+cmk$byClass[2]
 fourfoldplot(cmk$table, color = c("cyan", "pink"),
              conf.level = 0, margin = 1, main = "Confusion Matrix for KNN")     # plot confusion ma
 cmk
