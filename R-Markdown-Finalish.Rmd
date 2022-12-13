@@ -234,6 +234,7 @@ df = cars_final[, -5]
 df$is_claim <- as.factor(df$is_claim)
 library(reshape2)
 df.melt = melt(df)
+# HEAD
 
 df.boxplot = ggplot(df.melt, aes(y=value,is_claim)) + 
   geom_boxplot() + 
@@ -249,7 +250,27 @@ barplot(prop.table(table(cars$is_claim)),
         ylim = c(0, 1),
         main = "Class Distribution")
 ```
+=======
+>>>>>>> 56b25ee (adding downsampling)
 
+df.boxplot = ggplot(df.melt, aes(y=value,is_claim)) + 
+  geom_boxplot() + 
+  facet_wrap(~variable, scales = "free", ncol=3) + theme_classic() + xlab("Variables")
+
+df.boxplot
+
+```
+
+```{r}
+barplot(prop.table(table(cars$is_claim)),
+        col = rainbow(2),
+        ylim = c(0, 1),
+        main = "Class Distribution") # outcome variable distribution 
+prop.table(table(cars$is_claim))
+```
+When the proportions of the different classes in a classification problem are imbalanced (in our case 1 present about 6% from is_claim), it means that one class (the majority class) is much more frequent than the other class(es) (the minority class(es)). This can cause the model to have a high performance (e.g. high F1-score) on the majority class and low performance on the minority class.
+
+To address this issue, we can re-sample the data to create a more balanced distribution of the classes. This can be done using techniques such as undersampling (removing examples from the majority class) or oversampling . These techniques can help the model to better learn from the minority class and improve its performance on it.
 
 ```{r}
 proportions(table(cars_final$is_claim))
@@ -264,8 +285,10 @@ proportions(table(cars_validation$is_claim))
 
 ```
 
+
+
 ```{r}
-# Add dummy variables for Education
+# Add dummy variables 
 cars_final$model <- as.factor(cars_final$model)                       # change variable format to factor 
 
 dummies <- dummyVars(~ ., data = cars_final)                             # create object for dummy variables
@@ -277,20 +300,17 @@ cars_final_dummy$is_claim <- as.factor(cars_final_dummy$is_claim)
 head(cars_final_dummy)                                                  # resulting in 11
 str(cars_final_dummy)
 
+train_dummy <- cars_final_dummy[index,] # training set with dummies  
+valid_dummy <- cars_final_dummy[-index,] #validation set with dummies
+train_new <- downSample(train_dummy[,-16],train_dummy$is_claim,yname = "is_claim") # undersampling for having same probation 
+str(train_new)
+proportions(table(train_new$is_claim))
+
+summary(train_new$is_claim)
+
 ```
 
-```{r}
 
-train_dummy <- cars_final_dummy[index,]
-valid_dummy <- cars_final_dummy[-index,]
-
-dim(train_dummy)
-dim(valid_dummy)
-proportions(table(cars_train$is_claim))
-proportions(table(cars_validation$is_claim))
-proportions(table(train_dummy$is_claim))
-proportions(table(valid_dummy$is_claim))
-```
 
 
 ## KNN
@@ -302,12 +322,12 @@ accuracy <- data.frame(k = seq(1, 50, 1), overallaccuracy = rep(0, 50))
 
 # Use for loop to find k with highest accuracy
 for (i in 1:50) {
-  knn.pred<-knn(train_dummy[,-16],valid_dummy[,-16],
-                cl=train_dummy[,16],k=i)
+  knn.pred<-knn(train_new[,-16],valid_dummy[,-16],
+                cl=train_new[,16],k=i)
   accuracy[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$overall[1]
-} # loop for calculating the accuracy fo k=30
+} # loop for calculating the accuracy fo k=50
 # Display accuracy for ten first k
-kable(accuracy[1:15,], row.names = F, caption = "Accuracy")
+kable(accuracy[1:10,], row.names = F, caption = "Accuracy")
 ```
 
 ```{r}
@@ -325,15 +345,18 @@ ggplot(accuracy, aes(k, overallaccuracy)) +
 ```
 
 ```{r}
-knn.pred.valid <- knn(train_dummy[, -16], valid_dummy[, -16], cl = train_dummy[, 16], k = 3 ,prob = T)     #prediction on validation data usig k=3
+knn.pred.valid <- knn(train_new[, -16], valid_dummy[, -16], cl = train_new[, 16], k = 6 ,prob = T)     #prediction on validation data using best k=6
 cmk <- confusionMatrix(knn.pred.valid,valid_dummy[,16])    #confusion matrix 
 fourfoldplot(cmk$table, color = c("cyan", "pink"),
              conf.level = 0, margin = 1, main = "Confusion Matrix for KNN")     # plot confusion ma
+cmk
 ```
 
 ## Classification tree
 
 ```{r}
+cars_train[,6] <- as.factor(cars_train$is_claim)
+train_downsampling <- downSample(cars_train[,-6],cars_train$is_claim,yname = "is_claim")
 # Classification tree
 
 tree_fit <- rpart(cars_train$is_claim ~.,
