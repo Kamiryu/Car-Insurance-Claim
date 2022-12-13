@@ -25,7 +25,8 @@ library(rpart)       # trees
 library(caret)       # preprocess data
 library(rpart.plot)     # plot trees
 library(forecast)       # accuracy
-
+source("PlotResidLogist.R") # Deviance Residuals
+source("HosLemTest.R") # Hosmer–Lemeshow goodness of fit
 library(doParallel)#Accelerating computations by setting CPU to work in parallel
 cores = detectCores()
 cl <- makeCluster(cores-1)
@@ -422,8 +423,42 @@ fourfoldplot(conf_matrix_tree_v$table,
 The confusion matrix has classified correctly every observation for cases where the explanatory variable is negative. However, we see that it has classified even the positive claims. The model could be bad and chose to classify every observation as 0 since we noticed no rules in the fitted tree. Therefor, we should be careful and reluctant to state that the model is good at classifying negative claims.
 
 
+## Logistic Regression
+
+The logistic regression is a model that is also suited for binary response variables.
+
+### Classical logistic regression
+
+Building the model with a logit link function as it is usually the best suited one for the logistic regression
+```{r}
+cars.lg <- glm(is_claim ~., data= cars_final, family=binomial(link="logit"))
+
+summary(cars.lg) # Displaying the resulting model
+```
+
+From the dummies born from "model" variable, only the one corresponding to model=5 is statistically significant. H0 cannot be rejected for the betas estimate of population_density and age_of_policyholder. <br>
+<br>
+
+
+```{r}
+PlotResidLogist(cars.lg) # Deviance residuals
+```
+
+If we plot the deviance residuals, we notice that the positive residuals and negative ones each form a clear group. It is also the case for the pearson residuals. We can see a few extremes residuals (observations 3458,27165 and 37230).
+
+```{r}
+anova(cars.lg, test="Chisq")
+```
+
+According to the analysis of the deviance table, only population_density coul be unworth to be part of the model with p-value>0.05.
+
+
+```{r}
+HosLem.test(cars_final$is_claim, fitted(cars.lg))
+```
+
+"Warning: ‘-’ not meaningful for factors" .... To remove from analysis probably
 
 
 
-
-
+......... [ In progress, to continue and modify ]
