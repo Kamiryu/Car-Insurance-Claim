@@ -250,9 +250,9 @@ barplot(prop.table(table(cars$is_claim)),
         ylim = c(0, 1),
         main = "Class Distribution")
 ```
-=======
->>>>>>> 56b25ee (adding downsampling)
 
+
+```{r}
 df.boxplot = ggplot(df.melt, aes(y=value,is_claim)) + 
   geom_boxplot() + 
   facet_wrap(~variable, scales = "free", ncol=3) + theme_classic() + xlab("Variables")
