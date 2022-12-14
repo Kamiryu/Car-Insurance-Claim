@@ -33,10 +33,13 @@ library(caret)       # preprocess data
 library(rpart.plot)     # plot trees
 library(forecast)       # accuracy
 library(neuralnet)    # Neural netwok
+library(CustomerScoringMetrics) #Lift and gain
+library(data.table)
+
+
 
 
 source("PlotResidLogist.R") # Deviance Residuals
-source("HosLemTest.R") # Hosmer–Lemeshow goodness of fit
 library(doParallel)#Accelerating computations by setting CPU to work in parallel
 cores = detectCores()
 cl <- makeCluster(cores-1)
@@ -422,6 +425,23 @@ fourfoldplot(conf_matrix_tree_v$table,
              Tree (best size) for validation set") 
 ```
 
+Lift Chart
+```{r}
+#Getting the probabilities from the model
+tree.outcome <- as.data.frame(predict(pruned.tree, # Pruned tree
+                         cars_validation[,c(-16)],# Validation set
+                         type ="prob"))[,2]
+
+
+#Lift chart plot 
+liftChart(tree.outcome,  factor(cars_validation$is_claim))
+```
+
+
+```{r}
+topDecileLift(tree.outcome,  factor(cars_validation$is_claim))
+```
+
 
 ## KNN
 
@@ -510,6 +530,21 @@ fourfoldplot(cmk$table, color = c("cyan", "pink"),
 cmk
 ```
 
+Lift Chart
+```{r}
+knn_outcome <- as.data.table(cbind(as.data.table(knn.pred.valid), knn_prob = attr(knn.pred.valid, "prob")))
+
+# Adjusting probabilities
+knn_outcome[knn.pred.valid != 1, knn_prob := 1 - knn_prob]
+
+# liftChart(knn_outcome[,2], valid_dummy[,16])
+```
+
+```{r}
+#topDecileLift()
+```
+
+
 ## Neural Network
 Common practice is to use 1 hidden layer for fitting neural networks.
 
@@ -553,6 +588,8 @@ fourfoldplot(conf_matrix_1H2N_valid$table,
              main = "Confusion Matrix for Neural Network
              1 hidden layer of 2 nodes for validation set") 
 ```
+
+
 ### 1 Hidden layer and 3 nodes
 
 ```{r}
@@ -595,38 +632,168 @@ fourfoldplot(conf_matrix_1H3N_valid$table,
 ## Logistic Regression
 
 The logistic regression is a model that is also suited for binary response variables.
-
-### Classical logistic regression
-
+<br>
 Building the model with a logit link function as it is usually the best suited one for the logistic regression
 
 ```{r}
-cars.lg <- glm(is_claim ~., data= cars_final, family=binomial(link="logit"))
+cars.lg <- glm(is_claim ~., data= train_downsampling, family=binomial(link="logit"))
 
 summary(cars.lg) # Displaying the resulting model
 ```
 
-From the dummies born from "model" variable, only the one corresponding to model=5 is statistically significant. H0 cannot be rejected for the betas estimate of population_density and age_of_policyholder. <br> <br>
+From the dummies born from "model" variable, none of them are statistically significant. H0 cannot be rejected for the beta estimate of population_density either. The other explanatory variables are significant. <br> 
 
 ```{r}
 PlotResidLogist(cars.lg) # Deviance residuals
 ```
 
-If we plot the deviance residuals, we notice that the positive residuals and negative ones each form a clear group. It is also the case for the pearson residuals. We can see a few extremes residuals (observations 3458,27165 and 37230).
+If we plot the deviance residuals, we notice that the positive residuals and negative ones each form a clear group.<br> The residuals appearing only on one half of the observations is due to downsampling.
+The way every observation is tightly grouped may result from the artificially generated data. It is also the case for the pearson residuals. We can see an extreme residual that stands out (observation 440). Considering the amount of observations, this single observation should not affect the model too much. A robust logisitc regression is not required.
 
 ```{r}
 anova(cars.lg, test="Chisq")
 ```
 
-According to the analysis of the deviance table, only population_density coul be unworth to be part of the model with p-value\>0.05.
+According to the analysis of the deviance table, "population_density" and "model" could be unworth to be part of the model with p-value>0.05. <br>
+To further investigate the importance of the variables, we can run a stepwise selection.
 
 ```{r}
-HosLem.test(cars_final$is_claim, fitted(cars.lg))
+cars_glm_back <- step(cars.lg, direction = "backward") # Model with backward selection
+summary(cars_glm_back)
 ```
 
-"Warning: '-' not meaningful for factors" .... To remove from analysis probably
+The backward selection results in a model with 3 explanatory variables: policy_tenure, age_of_car and age_of_policyholder. Every beta is very stastically significant. 
 
-......... [ In progress, to continue and modify ]
+```{r}
+cars_glm_forward <- step(cars.lg, direction = "forward") # Model with forward selection
+summary(cars_glm_forward)
+```
+
+
+The forward selection ends up with different variables: the model is the same as the full one. This selection results in a minority of statistically  significant beta estimates.
+
+
+```{r}
+cars_glm_both <- step(cars.lg, direction = "both") # Forward and backward
+summary(cars_glm_both)
+```
+
+The selection with forward and backward at the same time results in the same variables as the backward selection. Every coefficient is also significant. The AIC of the reduced model is marginally better.
+
+
+
+Confusion Matrix
+```{r}
+# Full model
+pred_logi <- predict(cars.lg, newdata = cars_validation[,-16], type = "response")
+
+# 50% cutoff
+logi_outcome <- as.data.table(pred_logi)
+logi_outcome <- ifelse(logi_outcome > 0.5, 1, 0)
+
+
+#Confusion Matrix
+cm1 <- confusionMatrix(
+  factor(logi_outcome),
+  factor(cars_validation$is_claim), 
+  positive = "1")
+#Plot
+fourfoldplot(cm1$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for the full logistic regression") 
+```
+
+The downsampling allows us to better detect when a claim occurs, but it is as tbe cost of increasing the false positives which are numerous as we can see. We can try to choose another cutoff to see if we can improve the model.
+
+```{r}
+# cutoff at probability of 0.55
+logi_outcome <- as.data.table(pred_logi)
+logi_outcome <- ifelse(logi_outcome > 0.55, 1, 0)
+
+#Confusion Matrix
+cm2 <- confusionMatrix(
+  factor(logi_outcome),
+  factor(cars_validation$is_claim), 
+  positive = "1")
+#Plot
+fourfoldplot(cm2$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for the full logistic regression") 
+```
+
+We can see the tradeoff right away. The 5% increased on the cutoff value reduced the predictions of is_claim by about 30% for both true positives and false positives.
+
+```{r}
+# Backward/Both 
+cars.lg2 <- glm(is_claim ~ policy_tenure+age_of_car+age_of_policyholder , data= train_downsampling, family=binomial(link="logit"))
+pred_logi_back <- predict(cars.lg2, newdata = cars_validation[,-16], type = "response")
+
+# 50% cutoff
+logi_outcome_back <- as.data.table(pred_logi_back)
+logi_outcome_back <- ifelse(logi_outcome_back > 0.5, 1, 0)
+
+#Confusion Matrix
+cm3 <- confusionMatrix(
+  factor(logi_outcome_back),
+  factor(cars_validation$is_claim), 
+  positive = "1")
+#Plot
+fourfoldplot(cm3$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for the reduced logistic regression") 
+```
+
+With the model with a reduced number of variables, we seem to get a little bit more false positives true positive: more is_claim= 1 predictions. The prediction performance is very similar. Thus, to reduce computational resources, we can choose the model with the reduced number of variables since they perform similarly. <br>
+<br>
+We can try to see if the model can perform better with the whole training set combined with a very low cutoff value.
+
+```{r}
+# Backward/Both 
+cars.lg3 <- glm(is_claim ~ policy_tenure+age_of_car+age_of_policyholder , data= cars_train, family=binomial(link="logit"))
+pred_logi_back2 <- predict(cars.lg3, newdata = cars_validation[,-16], type = "response")
+
+# 50% cutoff
+logi_outcome_back2 <- as.data.table(pred_logi_back2)
+logi_outcome_back2 <- ifelse(logi_outcome_back > 0.5, 1, 0)
+
+#Confusion Matrix
+cm4 <- confusionMatrix(
+  factor(logi_outcome_back2),
+  factor(cars_validation$is_claim), 
+  positive = "1")
+#Plot
+fourfoldplot(cm4$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for the reduced logistic regression") 
+```
+
+
+Ploting with selected variables
+```{r}
+
+```
+
+Lift Chart
+```{r}
+logi_outcome <- as.data.table(pred_logi)
+logi_outcome <- cbind(ifelse(logi_outcome > 0.5, 1, 0), logi_outcome)
+
+```
+
+
+
+```{r}
+t <-  glm(is_claim ~ ., data= train_downsampling, family=binomial(link="logit"))
+summary(t)
+```
 
 data mining is the best next test
 
