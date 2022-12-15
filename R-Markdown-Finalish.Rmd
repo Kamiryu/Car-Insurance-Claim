@@ -297,7 +297,7 @@ proportions(table(cars_validation$is_claim))
 
 A classification tree is a method of supervised algorithm used for classification. It consists in continuously splitting the data into sub-parts based on data features (sub-parts form rectangles on the graph) until getting only one class in the splitted area. At that point, data's class is the most homogeneous as said previously. The splits are done in such a way that it minimizes the impurity of the new area. The algorithm may chose one of the following measures of impurity: Gini Index or Entropy measure. These measures ranges between 0 and 1 and allow to identify to which class the data belongs.
 
-*Intuition:* A greater number of terminal nodes is expected to decrease the overall error until reaching the point of overfitting.
+*Intuition*: A greater number of terminal nodes is expected to decrease the overall error until reaching the point of overfitting.
 
 Therefore, it is wise to stop tree's growth. In that sense, we need to prune the tree and use cross-validation to get a best tree size.
 
@@ -563,7 +563,7 @@ knn_outcome[knn.pred.valid != 1, knn_prob := 1 - knn_prob]
 
 ## Neural Network
 
-### Method descript: how the method(algo) works. (Explain like in an interview)
+### Method description: 
 
 Neural network tries to identify complex relationships between variables. It can be represented by edges (weights) interconnecting nodes (values) and organized in different layers. There are three levels of layer:
 
@@ -573,19 +573,19 @@ Neural network tries to identify complex relationships between variables. It can
 
 3.  *Output layer:* concerned with the final output (class)
 
-intuition: Take input values and compute weights
+*Intuition*: Transform input values and identify relations (translated by weights) to identify output values.
 
-Values from variables go into the input layer. Then we initialize a very small and random weight in relation with our imputed values to start training the model. The resulting value is a node in the hidden layer. Weights are then updated again for many times in order to find an optimum value which minimize the output error (predicted output with respect to the true output). These weights depend on a function called "transfer function". A common practice is to  apply the weights updating by starting with the output layer and turning back to find the input values. Such a model is called back propagation and we used it for prediction.
+Values from variables go into the input layer. Then we initialize a very small and random weight in relation with our imputed values to start training the model. The resulting value is a node in the hidden layer. Weights are then updated again for many times in order to find an optimum value which minimize the output error (predicted output with respect to the true output). These weights depend on a function called "transfer function". A common practice is to apply the weights updating by starting with the output layer and turning back to find the input values. Such a model is called back propagation and we used it for prediction.
 
 ### Data transformation if needed
+
 ```{r}
 summary(train_new)
 ```
 
-
 ### Method application
 
-Common practice is to use 1 hidden layer for fitting neural networks.
+Common practice is to use 1 hidden layer for fitting neural networks. We are first going to try the algorithm with two nodes.Then we are going to add a third node in order to compare both models.
 
 #### 1 Hidden layer and 2 nodes
 
