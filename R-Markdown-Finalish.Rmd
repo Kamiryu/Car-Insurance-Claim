@@ -292,7 +292,16 @@ proportions(table(cars_validation$is_claim))
 # Predictive analytics
 
 ## Classification tree
+### Method's description
+A classification tree is a method of supervised algorithm used for classification. It consists in continuously splitting the data into sub-parts based on data features (sub-parts form rectangles on the graph) until  getting only one class in the splitted area. At that point, data's class is the most homogeneous as said previously.
+The splits are done in such a way that it minimizes the impurity of the new area. 
+The algorithm may chose one of the following measures of impurity: Gini Index or Entropy measure. These measures ranges between 0 and 1 and allow to identify to which class the data belongs. 
 
+*Intuition:* A greater number of terminal nodes is expected to decrease the overall error until reaching the point of overfitting.
+
+Therefore, it is wise to stop tree's growth. In that sense, we need to prune the tree and use cross-validation to get a best tree size.
+
+### Method application
 ```{r}
 # Classification tree
 
@@ -398,13 +407,15 @@ best_cp <- table_cp[4,1]
 To choose a tree size we should look for the smallest minimum error within one std. error, also we want a small CP value.
 
 We see that the fourth observation where the nsplit = 3 and CP = 0.005 gives the best results. 
-
 ```{r}
 pruned.tree <- prune(tree_fit, cp = best_cp) # Prune the train model with best cp
 
 rpart.plot(pruned.tree) # Plot the tree with best size
+```
 
 
+### Performance evaluation
+```{r}
 # Prediction on Validation data
 pred_tree_v_pruned <- predict(pruned.tree, # Pruned tree
                          cars_validation[,c(-16)],# Validation set
@@ -424,8 +435,9 @@ fourfoldplot(conf_matrix_tree_v$table,
              main = "Confusion Matrix for Classification
              Tree (best size) for validation set") 
 ```
+### Conclusion on method's performance
 
-Lift Chart
+# Lift Chart
 ```{r}
 #Getting the probabilities from the model
 tree.outcome <- as.data.frame(predict(pruned.tree, # Pruned tree
@@ -546,13 +558,19 @@ knn_outcome[knn.pred.valid != 1, knn_prob := 1 - knn_prob]
 
 
 ## Neural Network
+### Method descript: how the method(algo) works. (Explain like in an interview)
+###Data transofrmation if needed
+
+
+### Method application (run on data)
+
 Common practice is to use 1 hidden layer for fitting neural networks.
 
 ```{r}
 summary(train_new)
 ```
 
-### 1 Hidden layer and 2 nodes
+#### 1 Hidden layer and 2 nodes
 ```{r}
 # run Neural Network (N.N.) with 1 hidden layer and 2 nodes
 nn_1H_2N <- neuralnet(is_claim ~ .,
@@ -590,7 +608,7 @@ fourfoldplot(conf_matrix_1H2N_valid$table,
 ```
 
 
-### 1 Hidden layer and 3 nodes
+#### 1 Hidden layer and 3 nodes
 
 ```{r}
 # run Neural Network (N.N.) with 1 hidden layer and 3 nodes
@@ -610,9 +628,9 @@ validation_prediction_1H_3N <- predict(nn_1H_3N,
 validation_prediction_1H_3N_binary <-
   ifelse(validation_prediction_1H_3N[,1]
          >= 0.5, 0, 1) # Transform probabilities as binary outcome 
-
-
-
+```
+### Performance evaluation
+```{r}
 # Confusion matrix for classification tree with validation set
 conf_matrix_1H3N_valid <- confusionMatrix(
   factor(validation_prediction_1H_3N_binary),
@@ -626,8 +644,11 @@ fourfoldplot(conf_matrix_1H3N_valid$table,
              margin = 1,
              main = "Confusion Matrix for Neural Network
              1 hidden layer of 3 nodes for validation set") 
-
 ```
+### Conclusion on method performance
+
+
+
 
 ## Logistic Regression
 
