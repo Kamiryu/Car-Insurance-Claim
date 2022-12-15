@@ -12,7 +12,7 @@ output:
     toc_depth: 4
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE,warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -306,6 +306,7 @@ train_downsampling$age_of_car <- as.vector(normalized.age)
  normalized.age.policy <- (train_downsampling$age_of_policyholder - min
                            (train_downsampling$age_of_policyholder)) / (max (train_downsampling$age_of_policyholder)-min  (train_downsampling$age_of_policyholder))
 train_downsampling$age_of_policyholder <- as.vector(normalized.age.policy)
+summary(train_downsampling)
 ```
 
 # Predictive analytics
@@ -467,6 +468,7 @@ topDecileLift(tree.outcome,  factor(cars_validation$is_claim))
 ```
 
 ## KNN
+The k-nearest-neighbors algorithm that can be used for classification. To classify or predict a new record, the method relies on finding “similar” records in the training data. These “neighbors” are then used to derive a classification for the new record by voting (for classification) .
 
 ```{r}
 # Add dummy variables 
@@ -487,7 +489,7 @@ valid_dummy <- cars_final_dummy[-index,] #validation set with dummies
 train_new <- downSample(train_dummy[,-16],train_dummy$is_claim,yname = "is_claim") # undersampling for having same probation 
 str(train_new)
 proportions(table(train_new$is_claim))
-
+summary(train_dummy)
 summary(train_new$is_claim)
 
 ```
@@ -544,10 +546,10 @@ ggplot(Specificity, aes(k, overallspecificity)) +
 
 ```
 
-Since we are looking fo k which give us max optimum value of Specificity we chose k = 49
+Since we are looking fo k which give us max optimum value of Specificity we chose k = 46
 
 ```{r}
-knn.pred.valid <- knn(train_new[, -16], valid_dummy[, -16], cl = train_new[, 16], k = 49 ,prob = T)     #prediction on validation data using best k=6
+knn.pred.valid <- knn(train_new[, -16], valid_dummy[, -16], cl = train_new[, 16], k = 46 ,prob = T)     #prediction on validation data using best k=6
 cmk <- confusionMatrix(knn.pred.valid,valid_dummy[,16])    #confusion matrix 
 cmk$byClass[2]
 fourfoldplot(cmk$table, color = c("cyan", "pink"),
@@ -839,19 +841,10 @@ data mining is the best next test
 # All methods comparison
 
 ```{r}
-Accuracy <-  data.frame(LR = confusionMatrix(
-  factor(logi_outcome_back2),
-  factor(cars_validation$is_claim), 
-  positive = "1")$overall[1])  #predict accuracy by using logistic regression 
-Accuracy <- cbind(Accuracy, KNN = confusionMatrix(knn.pred.valid,valid_dummy[,16])$overall[1])      #predict accuracy by using KNN
-Accuracy <- cbind(Accuracy,CT = confusionMatrix(
-  pred_tree_v_pruned,
-  factor(cars_validation$is_claim),
-  positive = "1")$overall[1])    #predict accuracy by using tree
-Accuracy <- cbind(Accuracy,NN=confusionMatrix(
-  factor(validation_prediction_1H_2N_binary),
-  factor(valid_dummy$is_claim), # change dataset
-  positive = "1")$overall[1])     #predict accuracy by using neural network
+Accuracy <-  data.frame(LR = cm2$overall[1])  #predict accuracy by using logistic regression 
+Accuracy <- cbind(Accuracy, KNN = cmk$overall[1])      #predict accuracy by using KNN
+Accuracy <- cbind(Accuracy,CT = conf_matrix_tree_v$overall[1])    #predict accuracy by using tree
+Accuracy <- cbind(Accuracy,NN=conf_matrix_1H3N_valid$overall[1])     #predict accuracy by using neural network
 Accuracy.melt = melt(Accuracy)
 ggplot(data = Accuracy.melt,aes(x=reorder(variable, value),y=value))+ylab("Accuracy") + xlab("Method") +
   geom_bar(stat="identity", fill="steelblue")+
@@ -860,19 +853,10 @@ ggplot(data = Accuracy.melt,aes(x=reorder(variable, value),y=value))+ylab("Accur
 ```
 
 ```{r}
-Specificity_P <-  data.frame(LR = confusionMatrix(
-  factor(logi_outcome_back2),
-  factor(cars_validation$is_claim), 
-  positive = "1")$byClass[2])  #predict specificity by using logistic regression 
-Specificity_P <- cbind(Specificity_P, KNN = confusionMatrix(knn.pred.valid,valid_dummy[,16])$byClass[2])      #predict accuracy by using KNN
-Specificity_P <- cbind(Specificity_P,CT = confusionMatrix(
-  pred_tree_v_pruned,
-  factor(cars_validation$is_claim),
-  positive = "1")$byClass[2])    #predicts pecificity by using tree
-Specificity_P <- cbind(Specificity_P,NN=confusionMatrix(
-  factor(validation_prediction_1H_2N_binary),
-  factor(valid_dummy$is_claim), # change
-  positive = "1")$byClass[2])     #predict specificity by using neural network
+Specificity_P <-  data.frame(LR = cm2$byClass[2])  #predict specificity by using logistic regression 
+Specificity_P <- cbind(Specificity_P, KNN = cmk$byClass[2])      #predict accuracy by using KNN
+Specificity_P <- cbind(Specificity_P,CT = conf_matrix_tree_v$byClass[2])    #predicts pecificity by using tree
+Specificity_P <- cbind(Specificity_P,NN=conf_matrix_1H3N_valid$byClass[2])     #predict specificity by using neural network
 Specificity_P.melt = melt(Specificity_P)
 ggplot(data = Specificity_P.melt,aes(x=reorder(variable, value),y=value))+ylab("Specificity") + xlab("Method") +
   geom_bar(stat="identity", fill="steelblue")+
