@@ -802,7 +802,7 @@ pred_logi_back2 <- predict(cars.lg3, newdata = cars_validation[,-16], type = "re
 
 # 50% cutoff
 logi_outcome_back2 <- as.data.table(pred_logi_back2)
-logi_outcome_back2 <- ifelse(logi_outcome_back > 0.5, 1, 0)
+logi_outcome_back2 <- ifelse(logi_outcome_back2 > 0.5, 1, 0)
 
 #Confusion Matrix
 cm4 <- confusionMatrix(
