@@ -275,18 +275,37 @@ prop.table(table(cars$is_claim))
 
 When the proportions of the different classes in a classification problem are imbalanced (in our case 1 present about 6% from is_claim), it means that one class (the majority class) is much more frequent than the other class(es) (the minority class(es)). This can cause the model to have a high performance (e.g. high F1-score) on the majority class and low performance on the minority class.
 
-To address this issue, we can re-sample the data to create a more balanced distribution of the classes. This can be done using techniques such as undersampling (removing examples from the majority class) or oversampling . These techniques can help the model to better learn from the minority class and improve its performance on it.
+To address this issue, we can re-sample the data to create a more balanced distribution of the classes. This can be done using techniques such as undersampling (removing observations from the majority class) or oversampling . These techniques can help the model to learn better from the minority class and improve its performance on it.
 
 ```{r}
-
 set.seed(1)
 index <- sample(nrow(cars_final),nrow(cars_final)*0.60)
 cars_train = cars_final[index,]
 cars_validation = cars_final[-index,]
-
 proportions(table(cars_train$is_claim))
 proportions(table(cars_validation$is_claim))
 
+# Downsample 
+cars_train[,6] <- as.factor(cars_train$is_claim)
+train_downsampling <- downSample(cars_train[,-6],cars_train$is_claim,yname = "is_claim")
+
+
+
+# Normalizing variables again on downsample's basis:
+
+# Normalizing policy tenure
+ normalized.policy <- (train_downsampling$policy_tenure - min(train_downsampling$policy_tenure)) / (max (train_downsampling$policy_tenure)-min  (train_downsampling$policy_tenure))
+train_downsampling$policy_tenure <- as.vector(normalized.policy)
+  
+#   Normalizing age_of car
+  normalized.age <- (train_downsampling$age_of_car - min  (train_downsampling$age_of_car)) / (max (train_downsampling$age_of_car)-min (train_downsampling$age_of_car))
+train_downsampling$age_of_car <- as.vector(normalized.age)
+ 
+  
+#  Normalizing age of policy holder
+ normalized.age.policy <- (train_downsampling$age_of_policyholder - min
+                           (train_downsampling$age_of_policyholder)) / (max (train_downsampling$age_of_policyholder)-min  (train_downsampling$age_of_policyholder))
+train_downsampling$age_of_policyholder <- as.vector(normalized.age.policy)
 ```
 
 # Predictive analytics
@@ -304,33 +323,6 @@ Therefore, it is wise to stop tree's growth. In that sense, we need to prune the
 ### Method application
 
 ```{r}
-# Classification tree
-
-tree_fit <- rpart(cars_train$is_claim ~.,
-                  data = cars_train, # Data set
-                  cp = 0.001,
-                  method = "class") # Method: Classification
-
-rpart.plot(tree_fit)
-
-# Predict values for train set
-pred_tree_fit <- predict(tree_fit,
-                         cars_train[,c(-6)],
-                         type ="class")
-
-
-confusionMatrix(pred_tree_fit,
-  factor(cars_train$is_claim),
-  positive = "1")
-```
-
-Plotting the classification tree with the trained data results in only 1 leaf. Also, by looking at the confusion matrix, we notice that model predicted every observation as is_claim = 0. Such an output is expected because the unbalance of the outcome variable. So, let's try again with a downsampled train dataset.
-
-```{r}
-# Downsample 
-cars_train[,6] <- as.factor(cars_train$is_claim)
-train_downsampling <- downSample(cars_train[,-6],cars_train$is_claim,yname = "is_claim")
-
 tree_fit <- rpart(train_downsampling$is_claim ~.,
                   data = train_downsampling, # Data set
                   cp = 0.001,
@@ -395,26 +387,29 @@ table_error <- cbind(table_cp[,1], # Include CP
                      table_cp[,5]) # Std error
 
 rows_small_errors_std <- head(sort(table_error[,4]),6) # Know the rows (folds) having  the smallest std error
+rows_small_errors <- head(sort(table_error[,3]),6) # Display the smallest standard errors
 
 rows_small_errors_std # Display and chose the best size
-
-rows_small_errors <- head(sort(table_error[,3]),6) # Display the smallest standard errors
 rows_small_errors # Display
 
 kable(table_cp)
 
-best_cp <- table_cp[4,1]
+best_cp <- table_cp[as.integer(names(rows_small_errors)[1]),1]
 ```
 
-To choose a tree size we should look for the smallest minimum error within one std. error, also we want a small CP value.
+To choose a tree size we should look for the smallest minimum error within one std. error and a small CP value.
 
-We see that the fourth observation where the nsplit = 3 and CP = 0.005 gives the best results.
+We see that the fourth observation where the nsplit = 13 and CP = 0.003 gives the best error.
 
 ```{r}
 pruned.tree <- prune(tree_fit, cp = best_cp) # Prune the train model with best cp
 
 rpart.plot(pruned.tree) # Plot the tree with best size
+
+sum(pruned.tree$frame$ncompete == 0) # Number of leaves
 ```
+
+The resulting pruned tree with at its best size has 15 leaves.
 
 ### Performance evaluation
 
@@ -437,9 +432,22 @@ fourfoldplot(conf_matrix_tree_v$table,
              margin = 1,
              main = "Confusion Matrix for Classification
              Tree (best size) for validation set") 
+
 ```
 
+Looking at the performance metrics:
+
+-    Accuracy highs at 53.7 %
+
+-   Specificity highs at 52.6 %
+
+-   Sensitivity is 68.6%
+
+From all positive outcome predicted, only 9 % where right whereas 96% of negative outcomes where correctly predicted.
+
 ### Conclusion on method's performance
+
+We conclude that predicting positive outcomes is difficult for the model since not even 10% of its positive predictions were right. The model is better at predicting negative outcomes than positive ones. Therefore, we may want to rely on an other model with respect to positive prediction.
 
 # Lift Chart
 
@@ -472,6 +480,7 @@ cars_final_dummy$is_claim <- as.factor(cars_final_dummy$is_claim)
 
 head(cars_final_dummy)                                                  # resulting in 11
 str(cars_final_dummy)
+
 
 train_dummy <- cars_final_dummy[index,] # training set with dummies  
 valid_dummy <- cars_final_dummy[-index,] #validation set with dummies
@@ -563,7 +572,7 @@ knn_outcome[knn.pred.valid != 1, knn_prob := 1 - knn_prob]
 
 ## Neural Network
 
-### Method description: 
+### Method description:
 
 Neural network tries to identify complex relationships between variables. It can be represented by edges (weights) interconnecting nodes (values) and organized in different layers. There are three levels of layer:
 
@@ -575,7 +584,7 @@ Neural network tries to identify complex relationships between variables. It can
 
 *Intuition*: Transform input values and identify relations (translated by weights) to identify output values.
 
-Values from variables go into the input layer. Then we initialize a very small and random weight in relation with our imputed values to start training the model. The resulting value is a node in the hidden layer. Weights are then updated again for many times in order to find an optimum value which minimize the output error (predicted output with respect to the true output). These weights depend on a function called "transfer function". A common practice is to apply the weights updating by starting with the output layer and turning back to find the input values. Such a model is called back propagation and we used it for prediction.
+Values from variables go into the input layer. Then we initialize a very small and random weight in relation with our imputed values to start training the model. The resulting value is a node in the hidden layer. Weights are then updated again for many times in order to find an optimum value which minimize the output error (predicted output with respect to the true output). These weights depend on a function called "transfer function". A common practice is to apply weights updating by starting with the output layer and turning back to find the input values. Such a model is called back propagation and we used it for prediction.
 
 ### Data transformation if needed
 
@@ -587,7 +596,7 @@ summary(train_new)
 
 Common practice is to use 1 hidden layer for fitting neural networks. We are first going to try the algorithm with two nodes.Then we are going to add a third node in order to compare both models.
 
-#### 1 Hidden layer and 2 nodes
+#### 1 hidden layer and 2 nodes
 
 ```{r}
 # run Neural Network (N.N.) with 1 hidden layer and 2 nodes
@@ -626,7 +635,7 @@ fourfoldplot(conf_matrix_1H2N_valid$table,
              1 hidden layer of 2 nodes for validation set") 
 ```
 
-#### 1 Hidden layer and 3 nodes
+#### 1 hidden layer and 3 nodes
 
 ```{r}
 # run Neural Network (N.N.) with 1 hidden layer and 3 nodes
