@@ -297,24 +297,21 @@ proportions(table(cars_validation$is_claim))
 cars_train[,6] <- as.factor(cars_train$is_claim)
 train_downsampling <- downSample(cars_train[,-6],cars_train$is_claim,yname = "is_claim")
 
-
+# Normalizing function
+normalizing <- function(x) {
+    (x - min(x)) / (max(x) - min(x))
+}
 
 # Normalizing variables again on downsample's basis:
 
-# Normalizing policy tenure
- normalized.policy <- (train_downsampling$policy_tenure - min(train_downsampling$policy_tenure)) / (max (train_downsampling$policy_tenure)-min  (train_downsampling$policy_tenure))
-train_downsampling$policy_tenure <- as.vector(normalized.policy)
-  
-#   Normalizing age_of car
-  normalized.age <- (train_downsampling$age_of_car - min  (train_downsampling$age_of_car)) / (max (train_downsampling$age_of_car)-min (train_downsampling$age_of_car))
-train_downsampling$age_of_car <- as.vector(normalized.age)
- 
-  
-#  Normalizing age of policy holder
- normalized.age.policy <- (train_downsampling$age_of_policyholder - min
-                           (train_downsampling$age_of_policyholder)) / (max (train_downsampling$age_of_policyholder)-min  (train_downsampling$age_of_policyholder))
-train_downsampling$age_of_policyholder <- as.vector(normalized.age.policy)
-summary(train_downsampling)
+# Normalizing train data - downsampled
+train_downsampling[,c(1:4)] <- lapply(train_downsampling[,c(1:4)], normalizing)
+
+# Normalizing validation data
+cars_validation[,c(1:4)] <- lapply(cars_validation[,c(1:4)], normalizing)
+
+
+summary(cars_validation)
 ```
 
 # Predictive analytics
@@ -499,12 +496,16 @@ str(cars_final_dummy)
 
 train_dummy <- cars_final_dummy[index,] # training set with dummies  
 valid_dummy <- cars_final_dummy[-index,] #validation set with dummies
-train_new <- downSample(train_dummy[,-16],train_dummy$is_claim,yname = "is_claim") # undersampling for having same probation 
+train_dummy_downsampled <- downSample(train_dummy[,-16],train_dummy$is_claim,yname = "is_claim") # undersampling for having same probation 
 str(train_new)
 proportions(table(train_new$is_claim))
 summary(train_dummy)
 summary(train_new$is_claim)
 
+# Normalizing data
+train_dummy_downsampled[,c(1:4)] <- lapply(train_dummy_downsampled[,c(1:4)], normalizing)
+
+valid_dummy[,c(1:4)] <- lapply(valid_dummy[,c(1:4)], normalizing)
 ```
 
 ### Method application
@@ -610,7 +611,7 @@ Values from variables go into the input layer. Then we initialize a very small a
 ### Data transformation if needed
 
 ```{r}
-summary(train_new)
+summary(train_dummy_downsampled)
 ```
 
 ### Method application
@@ -622,9 +623,8 @@ Common practice is to use 1 hidden layer for fitting neural networks. We are fir
 ```{r}
 # run Neural Network (N.N.) with 1 hidden layer and 2 nodes
 nn_1H_2N <- neuralnet(is_claim ~ .,
-                    data = train_new,
-                    hidden = 2,
-                    algorithm = "backprop") # 1 hidden layer of 2 nodes
+                    data = train_dummy_downsampled,
+                    hidden = 2) # 1 hidden layer of 2 nodes
 
 plot(nn_1H_2N, rep="best")
 
@@ -661,7 +661,7 @@ fourfoldplot(conf_matrix_1H2N_valid$table,
 ```{r}
 # run Neural Network (N.N.) with 1 hidden layer and 3 nodes
 nn_1H_3N <- neuralnet(is_claim ~.,
-                    data = train_new,
+                    data = train_dummy_downsampled,
                     hidden = 3, # 1 hidden layer of 3 nodes
                     algorithm = "backprop")
 
