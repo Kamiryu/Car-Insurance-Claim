@@ -300,7 +300,7 @@ df.boxplot = ggplot(df.melt, aes(y=value,is_claim)) +
 df.boxplot
 
 ```
-
+We can can the distribution is normal for is_claim = 0 and is_claim = 1 with outliers 
 ```{r}
 barplot(prop.table(table(cars$is_claim)),
         col = rainbow(2),
@@ -545,7 +545,7 @@ accuracy <- data.frame(k = seq(1, 50, 1), overallaccuracy = rep(0, 50))
 # Use for loop to find k with highest accuracy
 for (i in 1:50) {
   knn.pred<-knn(train_dummy_downsampled[,-16],valid_dummy[,-16],
-                cl=train_new[,16],k=i)
+                cl=train_dummy_downsampled[,16],k=i)
   accuracy[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$overall[1]
 } 
 # Data frame for k from 1 to 50 and respective specificity
@@ -557,6 +557,16 @@ for (i in 1:50) {
                 cl=train_dummy_downsampled[,16],k=i)
   Specificity[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$byClass[2]
 } 
+# Data frame for k from 1 to 50 and respective Sensitivity 
+Sensitivity  <-  data.frame(k = seq(1, 50, 1), overallSensitivity  = rep(0, 50))
+
+# Use for loop to find k with highest Sensitivity 
+for (i in 1:50) {
+  knn.pred<-knn(train_dummy_downsampled[,-16],valid_dummy[,-16],
+                cl=train_dummy_downsampled[,16],k=i)
+  Sensitivity[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$byClass[1]
+} 
+
 
 
 ```
@@ -564,7 +574,7 @@ for (i in 1:50) {
 ```{r}
 which(accuracy[,2] == max(accuracy[,2]))   # max accuracy
 which(Specificity[,2] == max(Specificity[,2]))   # max specificity 
-
+which(Sensitivity[,2] == max(Sensitivity[,2]))   # max specificity 
 ```
 
 ```{r}
@@ -574,6 +584,14 @@ ggplot(accuracy, aes(k, overallaccuracy)) +
   theme_minimal() +
   labs (title = "K nearest neighbours: Overall accuracy vs K", 
         y = "Accuracy", 
+        x = "k nearest neigbours" )
+
+# Plot Sensitivity for different k
+ggplot(Sensitivity, aes(k, overallSensitivity)) + 
+  geom_line() + 
+  theme_minimal() +
+  labs (title = "K nearest neighbours: Overall Sensitivity vs K", 
+        y = "Sensitivity", 
         x = "k nearest neigbours" )
 
 # Plot specificity for different k
@@ -587,10 +605,10 @@ ggplot(Specificity, aes(k, overallspecificity)) +
 
 ```
 
-Since we are looking fo k which give us max optimum value of Specificity we chose k = 41
+Since we are looking for k which give us max optimum value of Specificity we chose k = 31
 
 ```{r}
-knn.pred.valid <- knn(train_dummy_downsampled[, -16], valid_dummy[, -16], cl = train_dummy_downsampled[, 16], k = 41 ,prob = T)     #prediction on validation data using best k=6
+knn.pred.valid <- knn(train_dummy_downsampled[, -16], valid_dummy[, -16], cl = train_dummy_downsampled[, 16], k = 35 ,prob = T)     #prediction on validation data using best k=6
 cmk <- confusionMatrix(knn.pred.valid,valid_dummy[,16])    #confusion matrix 
 cmk$byClass[2]
 fourfoldplot(cmk$table, color = c("cyan", "pink"),
@@ -615,7 +633,7 @@ liftChart(knn_outcome$knn_prob, factor(valid_dummy$is_claim))
 topDecileLift(knn_outcome$knn_prob, factor(valid_dummy$is_claim))
 ```
 
-With a top decile lift of 1.37, the model's lift drastically decreases at the second decile then slowly declines with each decile.
+With a top decile lift of 1.40, the model's lift drastically decreases at the second decile then slowly declines with each decile.
 
 ## Neural Network
 
