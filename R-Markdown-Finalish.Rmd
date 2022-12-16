@@ -52,7 +52,7 @@ Being able to predict the risk of a policyholder's complaint is fundamental for 
 
 A dataset containing information about insurance holders and details about them is going to be used to progress towards our goal. The dataset is large and comes from the Kaggle web platform. It contains 58'500 observations and 44 variables. Among this information, we find attributes such as, the population density of the insured's city, the age of the policyholder, the age of the insured car, the car model, etc. However, we are particularly interested in the explained variable: "Is_claim" This is a boolean indicator showing if a policyholder filed a claim. A positive case will be denoted by 1 and 0 in the opposite case. Therefore we will try to predict it once our classification models have been trained.
 
-To conduct our research, we plan to undertake the following steps. First, we will explore the data. [Add STEPS] [Add STEPS] [Add STEPS] [Add STEPS]
+To conduct our research, we plan to undertake the following steps. First, we will need to drop some variables, because our data set is very large and requires a lot of computation power. We will continue with a regular exploratory data analysis understand our data. After this step, we will explore different methods of classification. We are going to explore classification tree, k-nearest neighbors, neural network, logistic regression and ensembles. Finally we will compare these method to identify the most suitable for our case.
 
 ## [Add STEPS] To be continued
 
@@ -603,7 +603,7 @@ Neural network tries to identify complex relationships between variables. It can
 
 *Intuition*: Transform input values and identify relations (translated by weights) to identify output values.
 
-Values from variables go into the input layer. Then we initialize a very small and random weight in relation with our imputed values to start training the model. The resulting value is a node in the hidden layer. Weights are then updated again for many times in order to find an optimum value which minimize the output error (predicted output with respect to the true output). These weights depend on a function called "transfer function". A common practice is to apply weights updating by starting with the output layer and turning back to find the input values. Such a model is called back propagation and we used it for prediction.
+Values from variables go into the input layer. Then we initialize a very small and random weight in relation with our imputed values to start training the model. The resulting value is a node in the hidden layer. Weights are then updated again for many times in order to find an optimum value which minimize the output error (predicted output with respect to the true output). These weights depend on a function called "transfer function".
 
 ### Data transformation if needed
 
@@ -618,7 +618,7 @@ Common practice is to use 1 hidden layer for fitting neural networks. We are fir
 #### 1 hidden layer and 2 nodes
 
 ```{r}
-# run Neural Network (N.N.) with 1 hidden layer and 2 nodes
+# Run Neural Network (N.N.) with 1 hidden layer and 2 nodes
 nn_1H_2N <- neuralnet(is_claim ~ .,
                     data = train_dummy_downsampled,
                     hidden = 2) # 1 hidden layer of 2 nodes
@@ -663,7 +663,6 @@ nn_1H_3N <- neuralnet(is_claim ~.,
                     
 
 plot(nn_1H_3N, rep="best")
-
 
 
 # Predict the output on validation set
