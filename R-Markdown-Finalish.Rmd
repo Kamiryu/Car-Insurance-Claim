@@ -48,6 +48,14 @@ registerDoParallel(cl)
 
 # Introduction
 
+Being able to predict the risk of a policyholder's complaint is fundamental for an insurance company. It could impact its profitability. Our team decided to dive in that industry. We decided to conduct an analysis to better understand and identify the complaint phenomenon with regards to a car insurance business. Specifically, we want to predict whether an insured is going to claim a file. We will try to achieve that through different algorithmic classification methods and by trying to identify the best predictive model for such a situation.
+
+A dataset containing information about insurance holders and details about them is going to be used to progress towards our goal. The dataset is large and comes from the Kaggle web platform. It contains 58'500 observations and 44 variables. Among this information, we find attributes such as, the population density of the insured's city, the age of the policyholder, the age of the insured car, the car model, etc. However, we are particularly interested in the explained variable: "Is_claim" This is a boolean indicator showing if a policyholder filed a claim. A positive case will be denoted by 1 and 0 in the opposite case. Therefore we will try to predict it once our classification models have been trained.
+
+To conduct our research, we plan to undertake the following steps. First, we will explore the data. [Add STEPS] [Add STEPS] [Add STEPS] [Add STEPS]
+
+## [Add STEPS] To be continued
+
 ```{r,warning=FALSE}
 cars <- read.csv("train.csv", sep=",", header = TRUE)
 
@@ -317,7 +325,7 @@ summary(train_downsampling)
 
 A classification tree is a method of supervised algorithm used for classification. It consists in continuously splitting the data into sub-parts based on data features (sub-parts form rectangles on the graph) until getting only one class in the splitted area. At that point, data's class is the most homogeneous as said previously. The splits are done in such a way that it minimizes the impurity of the new area. The algorithm may chose one of the following measures of impurity: Gini Index or Entropy measure. These measures ranges between 0 and 1 and allow to identify to which class the data belongs.
 
-*Intuition*: A greater number of terminal nodes is expected to decrease the overall error until reaching the point of overfitting.
+*Intuition*: A higher number of terminal nodes is expected to decrease the overall error until reaching the point of overfitting.
 
 Therefore, it is wise to stop tree's growth. In that sense, we need to prune the tree and use cross-validation to get a best tree size.
 
@@ -438,7 +446,7 @@ fourfoldplot(conf_matrix_tree_v$table,
 
 Looking at the performance metrics:
 
--    Accuracy highs at 53.7 %
+-   Accuracy highs at 53.7 %
 
 -   Specificity highs at 52.6 %
 
@@ -450,8 +458,8 @@ From all positive outcome predicted, only 9 % where right whereas 96% of negativ
 
 We conclude that predicting positive outcomes is difficult for the model since not even 10% of its positive predictions were right. The model is better at predicting negative outcomes than positive ones. Therefore, we may want to rely on an other model with respect to positive prediction.
 
-
 Lift Chart
+
 ```{r}
 #Getting the probabilities from the model
 tree.outcome <- as.data.frame(predict(pruned.tree, # Pruned tree
@@ -471,7 +479,7 @@ topDecileLift(tree.outcome,  factor(cars_validation$is_claim))
 
 ### Method's description
 
-The k-nearest-neighbors algorithm that can be used for classification. To classify or predict a new record, the method relies on finding “similar” records in the training data. These “neighbors” are then used to derive a classification for the new record by voting (for classification) .
+The k-nearest-neighbors algorithm that can be used for classification. To classify or predict a new record, the method relies on finding "similar" records in the training data. These "neighbors" are then used to derive a classification for the new record by voting (for classification) .
 
 ### Data transformation
 
@@ -695,7 +703,7 @@ fourfoldplot(conf_matrix_1H3N_valid$table,
 
 ### Method Description
 
-The logistic regression is a model that is also suited for binary response variables. It  is a modeling technique used in statistics to predict the probability of an event occurring based on different independent variables. <br> Building the model with a logit link function as it is usually the best suited one for the logistic regression.
+The logistic regression is a model that is also suited for binary response variables. It is a modeling technique used in statistics to predict the probability of an event occurring based on different independent variables. <br> Building the model with a logit link function as it is usually the best suited one for the logistic regression.
 
 ### Method Application
 
@@ -705,7 +713,7 @@ cars.lg <- glm(is_claim ~., data= train_downsampling, family=binomial(link="logi
 summary(cars.lg) # Displaying the resulting model
 ```
 
-From the dummies born from "model" variable, only model =M2  is statistically significant. H0 cannot be rejected for the beta estimates of population_density and age_of_policeholder either. The other explanatory variables are significant, but the intercept is not. <br>
+From the dummies born from "model" variable, only model =M2 is statistically significant. H0 cannot be rejected for the beta estimates of population_density and age_of_policeholder either. The other explanatory variables are significant, but the intercept is not. <br>
 
 ```{r}
 PlotResidLogist(cars.lg) # Deviance residuals
@@ -850,11 +858,10 @@ fourfoldplot(cm4$table,
 cm4$overall["Accuracy"]
 ```
 
-
 With a cutoff of 6%, the model performs similarly to the model constructed on the downsample. Decreasing of increasing the cutoff results in the same aforementioned tradeoff. We get similar performance with this model, but at very low cutoff values. At a 0.5 and even 0.2, the sensitivity/specificity tradeoff is maxed out: specificity is at 1 and sensitivity 0.
 
-
 Lift Chart
+
 ```{r}
 logi_outcome <- as.data.table(pred_logi_back)
 
@@ -867,13 +874,9 @@ topDecileLift(factor(logi_outcome$pred_logi) , factor(cars_validation$is_claim))
 
 The top decile lift is at 1.63, and it gradually decreases in a linear fashion.
 
-
 ### Conclusion on method performance
 
-The logistic regression's performance is not great. The accuracy is only at 51.8% for the chosen model (2 explanatory variables with downsample) and the sensitivity of 64.4% lets room for a lot of undetected claims.  The false positives are also numerous with a specificity of 50.8%.
-
-
-
+The logistic regression's performance is not great. The accuracy is only at 51.8% for the chosen model (2 explanatory variables with downsample) and the sensitivity of 64.4% lets room for a lot of undetected claims. The false positives are also numerous with a specificity of 50.8%.
 
 # All methods comparison
 
