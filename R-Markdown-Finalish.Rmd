@@ -920,6 +920,46 @@ The top decile lift is at 1.63, and it gradually decreases in a linear fashion.
 
 The logistic regression's performance is not great. The accuracy is only at 51.8% for the chosen model (2 explanatory variables with downsample) and the sensitivity of 64.4% lets room for a lot of undetected claims. The false positives are also numerous with a specificity of 50.8%.
 
+## Ensemble
+
+```{r}
+#Actual outcome
+actual_outcome <- cars_validation[,6]
+
+# Classification Tree
+tree.outcome2 <- cbind(as.data.frame(tree.outcome),tree_prob=tree.outcome)
+tree.outcome2$tree.outcome <- ifelse(tree.outcome2$tree.outcome>0.5,1,0)
+
+#KNN
+knn_outcome2 <- as.data.frame(knn_outcome)
+colnames(knn_outcome2) <- c("knn_pred", "knn_prob")
+
+#Neural Network
+
+#Logistic Regression
+logi_outcome2 <- cbind( logi_outcome, logi_outcome)
+colnames(logi_outcome2) <- c("logi_pred","logi_prob")
+logi_outcome2$logi_pred <- ifelse(logi_outcome2$logi_pred>0.5,1,0)
+
+ensemble <- data.table(actual_outcome,tree.outcome2,knn_outcome2,logi_outcome2)
+
+```
+
+
+```{r}
+# Average probabilities column
+# ensemble[, avg_prob := (logi_prob + knn_prob + tree_prob + nn_prob) / 4]
+
+# # Majority vote
+# ensemble[, maj_vote := as.numeric(logi_pred) + ifelse(as.numeric(knn_pred) == 1, 0, 1) + as.numeric(tree_pred)]
+# 
+# ensemble[, maj_vote := ifelse(maj_vote >= 2, 1, 0)]
+# 
+# # Display first 10 rows
+# kable(ensemble[1:10, ], format = "markdown")
+```
+
+
 # All methods comparison
 
 ```{r}
