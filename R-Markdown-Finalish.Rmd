@@ -623,10 +623,10 @@ ggplot(Specificity, aes(k, overallspecificity)) +
 
 ```
 
-Since we are looking for k which give us max optimum value of Specificity we chose k = 31
+Since we are looking for k which give us max optimum value of Specificity we chose k = 41
 
 ```{r}
-knn.pred.valid <- knn(train_dummy_downsampled[, -16], valid_dummy[, -16], cl = train_dummy_downsampled[, 16], k = 35 ,prob = T)     #prediction on validation data using best k=6
+knn.pred.valid <- knn(train_dummy_downsampled[, -16], valid_dummy[, -16], cl = train_dummy_downsampled[, 16], k = 41 ,prob = T)     #prediction on validation data using best k=6
 cmk <- confusionMatrix(knn.pred.valid,valid_dummy[,16])    #confusion matrix 
 cmk$byClass[2]
 fourfoldplot(cmk$table, color = c("cyan", "pink"),
@@ -634,7 +634,7 @@ fourfoldplot(cmk$table, color = c("cyan", "pink"),
 cmk
 ```
 
-Lift Chart
+#### Lift Chart
 
 ```{r}
 #Extracting the probabilities
@@ -1076,7 +1076,10 @@ When selecting an ensemble approach, it's crucial to take the trade-offs between
 Accuracy <-  data.frame(LR = round(cm3$overall[1],3))  #predict accuracy by using logistic regression 
 Accuracy <- cbind(Accuracy, KNN = round(cmk$overall[1],3))      #predict accuracy by using KNN
 Accuracy <- cbind(Accuracy,CT = round(conf_matrix_tree_v$overall[1],3))    #predict accuracy by using tree
-Accuracy <- cbind(Accuracy,NN=round(conf_matrix_1H2N_valid$overall[1],3))     #predict accuracy by using neural network
+Accuracy <- cbind(Accuracy,NN=round(conf_matrix_1H4N_valid$overall[1],3))     #predict accuracy by using neural network
+Accuracy <- cbind(Accuracy,EM=round(cm_ens_maj$overall[1],3))     #predict accuracy ensemble majority 
+Accuracy <- cbind(Accuracy,EA=round(cm_ens_prob$overall[1],3))     #predict accuracy ensemble average 
+
 Accuracy.melt = melt(Accuracy)
 ggplot(data = Accuracy.melt,aes(x=reorder(variable, value),y=value))+ylab("Accuracy") + xlab("Method") +
   geom_bar(stat="identity", fill="steelblue")+
@@ -1087,8 +1090,11 @@ ggplot(data = Accuracy.melt,aes(x=reorder(variable, value),y=value))+ylab("Accur
 ```{r}
 Specificity_P <-  data.frame(LR = round(cm2$byClass[2],3))  #predict specificity by using logistic regression 
 Specificity_P <- cbind(Specificity_P, KNN = round(cmk$byClass[2],3))       #predict specificity by using KNN
-Specificity_P <- cbind(Specificity_P,CT = round(conf_matrix_tree_v$byClass[2],3))     #predicts specificity by using tree
-Specificity_P <- cbind(Specificity_P,NN=round(conf_matrix_1H2N_valid$byClass[2],3))    #predict specificity by using neural network
+Specificity_P <- cbind(Specificity_P,CT = round(conf_matrix_tree_v$byClass[2],3))     #predicts specificity tree
+Specificity_P <- cbind(Specificity_P,NN=round(conf_matrix_1H4N_valid$byClass[2],3))    #predict specificity neural network
+Specificity_P <- cbind(Specificity_P,EM=round(cm_ens_maj$byClass[2],3))    #predict specificity majority voting 
+Specificity_P <- cbind(Specificity_P,EA=round(cm_ens_prob$byClass[2],3))    #predict specificity ensemble average 
+
 Specificity_P.melt = melt(Specificity_P)
 ggplot(data = Specificity_P.melt,aes(x=reorder(variable, value),y=value))+ylab("Specificity") + xlab("Method") +
   geom_bar(stat="identity", fill="steelblue")+
@@ -1100,8 +1106,11 @@ ggplot(data = Specificity_P.melt,aes(x=reorder(variable, value),y=value))+ylab("
 ```{r}
 Sensitivity <-  data.frame(LR = round(cm2$byClass[1],3))  #predict Sensitivity by using logistic regression 
 Sensitivity <- cbind(Sensitivity, KNN = round(cmk$byClass[1],3))       #predict Sensitivity by using KNN
-Sensitivity <- cbind(Sensitivity,CT = round(conf_matrix_tree_v$byClass[1],3))     #predicts Sensitivity by using tree
-Sensitivity <- cbind(Sensitivity,NN=round(conf_matrix_1H2N_valid$byClass[1],3))    #predict Sensitivity by using neural network
+Sensitivity <- cbind(Sensitivity,CT = round(conf_matrix_tree_v$byClass[1],3))     #predicts Sensitivity  tree
+Sensitivity <- cbind(Sensitivity,NN=round(conf_matrix_1H4N_valid$byClass[1],3))    #predict Sensitivity  neural network
+Sensitivity <- cbind(Sensitivity,EM=round(cm_ens_maj$byClass[1],3))    #predict Sensitivity majority voting 
+Sensitivity <- cbind(Sensitivity,EA=round(cm_ens_prob$byClass[1],3))    #predict Sensitivity ensemble average 
+
 Sensitivity.melt = melt(Sensitivity)
 ggplot(data = Sensitivity.melt,aes(x=reorder(variable, value),y=value))+ylab("Sensitivity") + xlab("Method") +
   geom_bar(stat="identity", fill="steelblue")+
