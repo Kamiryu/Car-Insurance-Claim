@@ -959,6 +959,14 @@ The logistic regression's performance is not great. The accuracy is only at 51.8
 
 ## Ensemble
 
+
+### Methods's description
+
+Machine learning ensemble approaches combine the results of various models to provide a single prediction. By avoiding overfitting and enhancing prediction robustness, ensemble approaches aim to enhance the generalization performance of the model.
+
+### Methods's application
+
+
 ```{r}
 #Actual outcome
 actual_outcome <- cars_validation[,6]
@@ -966,35 +974,100 @@ actual_outcome <- cars_validation[,6]
 # Classification Tree
 tree.outcome2 <- cbind(as.data.frame(tree.outcome),tree_prob=tree.outcome)
 tree.outcome2$tree.outcome <- ifelse(tree.outcome2$tree.outcome>0.5,1,0)
+colnames(tree.outcome2) <- c("tree_pred","tree_prob")
 
 #KNN
 knn_outcome2 <- as.data.frame(knn_outcome)
 colnames(knn_outcome2) <- c("knn_pred", "knn_prob")
 
 #Neural Network
+nn_outcome2 <- data.frame(validation_prediction_1H_4N[,1])
+nn_outcome2 <- cbind(ifelse(nn_outcome2>=0.5, 1, 0), nn_outcome2)
+colnames(nn_outcome2) <- c("nn_pred","nn_prob")
 
 #Logistic Regression
 logi_outcome2 <- cbind( logi_outcome, logi_outcome)
 colnames(logi_outcome2) <- c("logi_pred","logi_prob")
 logi_outcome2$logi_pred <- ifelse(logi_outcome2$logi_pred>0.5,1,0)
 
-ensemble <- data.table(actual_outcome,tree.outcome2,knn_outcome2,logi_outcome2)
+ensemble <- data.table(actual_outcome,tree.outcome2,knn_outcome2,nn_outcome2,logi_outcome2)
 
 ```
 
 
 ```{r}
 # Average probabilities column
-# ensemble[, avg_prob := (logi_prob + knn_prob + tree_prob + nn_prob) / 4]
+ensemble[, avg_prob := (logi_prob + knn_prob + tree_prob + nn_prob) / 4]
 
 # # Majority vote
-# ensemble[, maj_vote := as.numeric(logi_pred) + ifelse(as.numeric(knn_pred) == 1, 0, 1) + as.numeric(tree_pred)]
-# 
-# ensemble[, maj_vote := ifelse(maj_vote >= 2, 1, 0)]
-# 
-# # Display first 10 rows
-# kable(ensemble[1:10, ], format = "markdown")
+ensemble[, maj_vote := as.numeric(as.character(logi_pred))+ as.numeric(as.character(knn_pred)) + as.numeric(as.character(tree_pred))+ as.numeric(as.character(nn_pred))]
+
+ensemble[, maj_vote := ifelse(maj_vote >= 3, 1, 0)]
+
+# Display first 10 rows
+kable(ensemble[1:10, ], format = "markdown")
 ```
+
+### Performance Evaluation
+
+Using the average probability with a 0.5 cutoff
+```{r}
+#Confusion Matrix 
+cm_ens_prob <- confusionMatrix(
+  factor(ifelse(ensemble$avg_prob > 0.5, 1 ,0)),
+  factor(cars_validation$is_claim), 
+  positive = "1")
+#Plot
+fourfoldplot(cm_ens_prob$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix Ensemble Average Probability") 
+```
+
+```{r}
+# Accuracy
+cm_ens_prob$overall["Accuracy"]
+#Sensitivity
+cm_ens_prob$byClass["Sensitivity"]
+#Specificity
+cm_ens_prob$byClass["Specificity"]
+```
+
+
+
+Using the majority vote
+```{r}
+cm_ens_maj <- confusionMatrix(
+  factor(ensemble$maj_vote),
+  factor(cars_validation$is_claim), 
+  positive = "1")
+#Plot
+fourfoldplot(cm_ens_maj$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix Ensemble Majority vote") 
+```
+
+```{r}
+# Accuracy
+cm_ens_maj$overall["Accuracy"]
+#Sensitivity
+cm_ens_maj$byClass["Sensitivity"]
+#Specificity
+cm_ens_maj$byClass["Specificity"]
+```
+
+The majority vote approach's lesser sensitivity may be due in part to the fact that its projections are more "moderate" in terms of is_claim=1 predictions. Making a choice based on the majority vote effectively requires that the majority of the models agree on the forecast, which can reduce the likelihood of false positives (i.e., predicting the outcome variable as 1 when it is actually 0). Because there will be fewer overall true positive predictions, the sensitivity may be reduced as a result.
+<br>
+<br>
+On the other hand, because it is essentially averaging the probabilities of all the models, the average probability technique may be less conservative in its forecasts (more is_claim =1 predictions). Although there may be more false positives as a result, there may also be more actual positive predictions, increasing sensitivity.
+
+### Conclusion
+
+Overall, given that the majority vote strategy offers greater precision and specificity than the average probability approach, it would be a preferable option for this particular case. <br>
+When selecting an ensemble approach, it's crucial to take the trade-offs between the various performance measures into account because different applications could give particular metrics a higher priority (e.g., sensitivity versus specificity).
 
 
 # All methods comparison
