@@ -3,17 +3,20 @@ title: "Car Insurance Claims"
 author: "The miners"
 date: "2022-12-11"
 output:
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
   html_document:
     theme: paper
     highlight: tango
-    toc: true
-    toc_float: true
-    toc_collapsed: true
+    toc: yes
+    toc_float: yes
+    toc_collapsed: yes
     toc_depth: 4
 ---
 
-```{r setup, include=FALSE,warning=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include=FALSE,warning=FALSE,cache=TRUE}
+knitr::opts_chunk$set(echo = FALSE,warning=FALSE,cache=TRUE)
 ```
 
 ```{r}
@@ -45,11 +48,17 @@ registerDoParallel(cl)
 
 # Introduction
 
-Being able to predict the risk of a policyholder's complaint is fundamental for an insurance company. It could impact its profitability. Our team decided to dive in that industry. We decided to conduct an analysis to better understand and identify the complaint phenomenon with regards to a car insurance business. Specifically, we want to predict whether an insured is going to claim a file. We will try to achieve that through different algorithmic classification methods and by trying to identify the best predictive model for such a situation.
+Being able to predict the risk of a policyholder's complaint is fundamental for an insurance company. It could impact its profitability. We decided to conduct an analysis about that industry to better understand and identify the complaint phenomenon with regards to a car insurance business. Specifically, we want to predict whether an insured is going to claim a file. We will try to achieve that through different algorithmic classification methods and by trying to identify the best classification model for such a situation.
 
-A dataset containing information about insurance holders and details about them is going to be used to progress towards our goal. The dataset is large and comes from the Kaggle web platform. It contains 58'500 observations and 44 variables. Among this information, we find attributes such as, the population density of the insured's city, the age of the policyholder, the age of the insured car, the car model, etc. However, we are particularly interested in the explained variable: "Is_claim" This is a boolean indicator showing if a policyholder filed a claim. A positive case will be denoted by 1 and 0 in the opposite case. Therefore we will try to predict it once our classification models have been trained.
+A dataset containing information about insurance holders and details about them is going to be used to achive our goal. The dataset is large and comes from the Kaggle web platform. It contains 58'500 observations and 44 variables. Among this information, we find attributes such as, the population density of the insured's city, the age of the policyholder, the age of the insured car, the car model, etc. However, we are particularly interested in the explained variable "Is_claim" It is a boolean indicator showing if a policyholder filed a claim. A positive case will be denoted by 1 and 0 in the opposite case. Therefore we will try to predict it.
 
-To conduct our research, we plan to undertake the following steps. First, we will have a first look at the data and drop some variables, because our data set is very large and requires a lot of computation power. We will continue with a regular exploratory data analysis understand our data. After this step, we will explore different methods of classification. We are going to explore classification tree, k-nearest neighbors, neural network, logistic regression and ensembles. Finally we will compare these method to identify the most suitable for our case.
+To conduct our research, we plan to undertake the following steps. First, we will have a first look at the data and drop some variables, because our data set is very large and requires a lot of computation power. We will continue with a regular exploratory data analysis to understand our data. Then, we will explore different methods of classification. After this step, We are going to explore classification tree, k-nearest neighbors, neural network, logistic regression and ensembles. We will finish by comparing these method to identify the most suitable for our case.
+
+
+### Dataset preparation
+
+We need to manipulate our data before starting the Exploratory Data Analysis part in order to reduce the amount of data and making our computers ables to handle the dataset. 
+
 
 ```{r,warning=FALSE}
 cars <- read.csv("train.csv", sep=",", header = TRUE)# Original data set
@@ -348,11 +357,11 @@ summary(cars_validation)
 
 ### Method's description
 
-A classification tree is a method of supervised algorithm used for classification. It consists in continuously splitting the data into sub-parts based on data features (sub-parts form rectangles on the graph) until getting only one class in the splitted area. At that point, data's class is the most homogeneous as said previously. The splits are done in such a way that it minimizes the impurity of the new area. The algorithm may chose one of the following measures of impurity: Gini Index or Entropy measure. These measures ranges between 0 and 1 and allow to identify to which class the data belongs.
+A classification tree is a method of supervised algorithm used for classification. It consists in continuously splitting the data into sub-parts based on data features (sub-parts could be segmented in rectangular areas on the graph) until getting only one class in the splitted area. At that point, data's class is the most homogeneous as said previously. The splits are done in such a way that it minimizes the impurity of the new area. The algorithm may chose one of the following measures of impurity: Gini Index or Entropy measure. These measures range between 0 and 1 and allow to identify to which class the data belongs.
 
 *Intuition*: A higher number of terminal nodes is expected to decrease the overall error until reaching the point of overfitting.
 
-Therefore, it is wise to stop tree's growth. In that sense, we need to prune the tree and use cross-validation to get a best tree size.
+Therefore, it is wise to stop a tree's growth. In that sense, we need to prune the tree and use cross-validation to get a best tree size.
 
 ### Method application
 
@@ -371,26 +380,8 @@ rpart.plot(tree_fit) # Plot the resulting tree
 pred_tree_v_tr <- predict(tree_fit,
                          cars_validation[,c(-6)],
                          type ="class")
-
-
-
-
-# Confusion matrix for classification tree with validation set
-conf_matrix_tree_v <- confusionMatrix(
-  pred_tree_v_tr,
-  factor(cars_validation$is_claim),
-  positive = "1")
-
-# plot confusion matrix
-fourfoldplot(conf_matrix_tree_v$table,
-             color = c("cyan", "pink"),
-             conf.level = 0,
-             margin = 1,
-             main = "Confusion Matrix for Classification
-             Tree for validation set") 
 ```
-
-We see that using a balanced data set solved our issue and display a full grown tree.
+We start by fitting a full grown tree. It allows us to get a first look.
 
 ```{r}
 # Find the best cp with minimal xerror ||  /!\ code may need to be improved
@@ -401,9 +392,9 @@ cp_minimal <- tree_fit$cptable[which.min(
 pruned.tree <- prune(tree_fit, cp= cp_minimal) # Prune the train model with lowest cp
 ```
 
-We try to look at the lowest cp value to prune the tree. The found value equals 0.001. The value is similar to the default value that we chosen to compute to fit the classification tree.
+We want to identify the lowest cp value to prune the tree. That value equals 0.001 and is similar to the default value that we chosed to compute the full grown classification tree.
 
-It is known that we should not choose a tree based on it's cp, but we should choose rather a tree size. Ordinarily, we would like to have a small tree with a small cp. Such a tree would avoid overfitting.
+Also, it is known that we should not choose only a tree based on it's cp, but we should also consider the tree size. Ordinarily, we would like to have a small tree with a small cp. Such a tree would avoid overfitting. To choose a tree size we should find the smallest minimum error within one standard error and a small CP value.
 
 ```{r}
 # Cross-validation
@@ -431,9 +422,8 @@ kable(table_cp)
 best_cp <- table_cp[as.integer(names(rows_small_errors)[1]),1]
 ```
 
-To choose a tree size we should look for the smallest minimum error within one std. error and a small CP value.
 
-We see that the fourth observation where the nsplit = 13 and CP = 0.003 gives the best error.
+We see that the 16th observation where nsplit = 35 and CP = 0.0014509 gives the best error choice.
 
 ```{r}
 pruned.tree <- prune(tree_fit, cp = best_cp) # Prune the train model with best cp
@@ -443,10 +433,35 @@ rpart.plot(pruned.tree) # Plot the tree with best size
 sum(pruned.tree$frame$ncompete == 0) # Number of leaves
 ```
 
-The resulting pruned tree with at its best size has 15 leaves.
+The resulting pruned tree at its best size has 36 leaves.
 
 ### Performance evaluation
 
+```{r}
+# Confusion matrix for classification tree with validation set
+conf_matrix_tree_v <- confusionMatrix(
+  pred_tree_v_tr,
+  factor(cars_validation$is_claim),
+  positive = "1")
+conf_matrix_tree_v
+# plot confusion matrix
+fourfoldplot(conf_matrix_tree_v$table,
+             color = c("cyan", "pink"),
+             conf.level = 0,
+             margin = 1,
+             main = "Confusion Matrix for Classification
+             Tree for validation set") 
+```
+
+Looking at the performance metrics for the full grown tree:
+
+-   Accuracy highs at 43.2%
+
+-   Specificity highs at 41%
+
+-   Sensitivity is 74.5%
+
+We see  that the tree is better at classifying negative than positives outcome and struggles with false positive values that represents the majority of classifieds values.
 ```{r}
 # Prediction on Validation data
 pred_tree_v_pruned <- predict(pruned.tree, # Pruned tree
@@ -459,6 +474,7 @@ conf_matrix_tree_v <- confusionMatrix(
   factor(cars_validation$is_claim),
   positive = "1")
 conf_matrix_tree_v
+
 # plot confusion matrix
 fourfoldplot(conf_matrix_tree_v$table,
              color = c("cyan", "pink"),
@@ -469,21 +485,23 @@ fourfoldplot(conf_matrix_tree_v$table,
 
 ```
 
-Looking at the performance metrics:
+Looking at the performance metrics for the best size tree:
 
--   Accuracy highs at 53.7 %
+-   Accuracy highs at 47.2 %
 
--   Specificity highs at 52.6 %
+-   Specificity highs at 45.6 %
 
--   Sensitivity is 68.6%
+-   Sensitivity is 71.6%
 
-From all positive outcome predicted, only 9 % where right whereas 96% of negative outcomes where correctly predicted.
+From all positive outcome predicted, almost 8.3% where right while almost 95.9% of negative outcomes where correctly predicted. Also, the performances for accuracy improved of almost 4% and the one for specificity improved of almost 5%, but the performance was lower for sensitivity of almost 3%.
+
 
 ### Conclusion on method's performance
 
-We conclude that predicting positive outcomes is difficult for the model since not even 10% of its positive predictions were right. The model is better at predicting negative outcomes than positive ones. Therefore, we may want to rely on an other model with respect to positive prediction.
+We conclude that predicting positive outcomes is difficult for the classification tree model since not even 10% of its positive predictions are right, even if cross-validation has been used.
+The method is better at predicting negative outcomes than positive ones. Therefore, we may want to analyse an other model with hopping to find better results with respect to positive prediction.
 
-Lift Chart
+#### Lift Chart
 
 ```{r}
 #Getting the probabilities from the model
@@ -636,7 +654,6 @@ topDecileLift(knn_outcome$knn_prob, factor(valid_dummy$is_claim))
 With a top decile lift of 1.40, the model's lift drastically decreases at the second decile then slowly declines with each decile.
 
 ## Neural Network
-
 ### Method description:
 
 Neural network tries to identify complex relationships between variables. It can be represented by edges (weights) interconnecting nodes (values) and organized in different layers. There are three levels of layer:
@@ -651,15 +668,9 @@ Neural network tries to identify complex relationships between variables. It can
 
 Values from variables go into the input layer. Then we initialize a very small and random weight in relation with our imputed values to start training the model. The resulting value is a node in the hidden layer. Weights are then updated again for many times in order to find an optimum value which minimize the output error (predicted output with respect to the true output). These weights depend on a function called "transfer function".
 
-### Data transformation if needed
-
-```{r}
-summary(train_dummy_downsampled)
-```
-
 ### Method application
 
-Common practice is to use 1 hidden layer for fitting neural networks. We are first going to try the algorithm with two nodes.Then we are going to add a third node in order to compare both models.
+Common practice is to use 1 hidden layer for fitting neural networks. We are first going to try the algorithm with two nodes. Next, we are going to continue the analysis with a third node in order to compare performances.
 
 #### 1 hidden layer and 2 nodes
 
@@ -681,65 +692,91 @@ validation_prediction_1H_2N <- predict(nn_1H_2N,
 validation_prediction_1H_2N_binary <-
   ifelse(validation_prediction_1H_2N[,1]
          >= 0.5, 0, 1) # Transform probabilities as binary outcome 
+```
+We use an algorithm of neural network with one layer of two nodes. The variables that are used as input need to be numerical and normalized (from 0 to 1). These steps has already been done previously and this is why we input the variable model under its "dummified" form. Then, we train the algorithm and use it to predict data from our validation set.
 
+#### 1 hidden layer and 4 nodes
+```{r}
+# run Neural Network (N.N.) with 1 hidden layer and 4 nodes
+nn_1H_4N <- neuralnet(is_claim ~ .,
+                    data = train_dummy_downsampled,
+                    hidden = c(4)) # 1 hidden layer of 4 nodes
+                    
+
+
+plot(nn_1H_4N, rep="best") # plots the neural net with 4 nodes
+
+
+
+# Predict the output on validation set
+validation_prediction_1H_4N <- predict(nn_1H_4N,
+                                      valid_dummy[,-16],
+                                      type = "class")
+
+validation_prediction_1H_4N_binary <-
+  ifelse(validation_prediction_1H_4N[,1]
+         >= 0.5, 0, 1) # Transform probabilities as binary outcome 
+```
+### Performance evaluation
+
+```{r}
 
 
 # Confusion matrix for classification tree with validation set
 conf_matrix_1H2N_valid <- confusionMatrix(
-  factor(validation_prediction_1H_2N_binary),
-  factor(valid_dummy$is_claim), # change dataset
-  positive = "1")
+ factor(validation_prediction_1H_2N_binary),
+ factor(valid_dummy$is_claim), # change dataset
+ positive = "1")
+
+conf_matrix_1H2N_valid
 
 # plot confusion matrix
 fourfoldplot(conf_matrix_1H2N_valid$table,
-             color = c("cyan", "pink"),
-             conf.level = 0,
-             margin = 1,
-             main = "Confusion Matrix for Neural Network
-             1 hidden layer of 2 nodes for validation set") 
-```
-
-#### 1 hidden layer and 3 nodes
-
-```{r}
-# run Neural Network (N.N.) with 1 hidden layer and 3 nodes
-nn_1H_3N <- neuralnet(is_claim ~.,
-                    data = train_dummy_downsampled,
-                    hidden = 3) # 1 hidden layer of 3 nodes
-                    
-
-plot(nn_1H_3N, rep="best")
+            color = c("cyan", "pink"),
+            conf.level = 0,
+            margin = 1,
+            main = "Confusion Matrix for Neural Network
+            1 hidden layer of 2 nodes for validation set") 
 
 
-# Predict the output on validation set
-validation_prediction_1H_3N <- predict(nn_1H_3N,
-                                      valid_dummy[,-16],
-                                      type = "class")
-
-validation_prediction_1H_3N_binary <-
-  ifelse(validation_prediction_1H_3N[,1]
-         >= 0.5, 0, 1) # Transform probabilities as binary outcome 
-```
-
-### Performance evaluation
-
-```{r}
 # Confusion matrix for classification tree with validation set
-conf_matrix_1H3N_valid <- confusionMatrix(
-  factor(validation_prediction_1H_3N_binary),
-  factor(valid_dummy$is_claim), # change dataset
-  positive = "1")
+conf_matrix_1H4N_valid <- confusionMatrix(
+factor(validation_prediction_1H_4N_binary),
+factor(valid_dummy$is_claim), # change dataset
+positive = "1")
+
+conf_matrix_1H4N_valid
 
 # plot confusion matrix
-fourfoldplot(conf_matrix_1H3N_valid$table,
-             color = c("cyan", "pink"),
-             conf.level = 0,
-             margin = 1,
-             main = "Confusion Matrix for Neural Network
-             1 hidden layer of 3 nodes for validation set") 
+fourfoldplot(conf_matrix_1H4N_valid$table,
+           color = c("cyan", "pink"),
+           conf.level = 0,
+           margin = 1,
+           main = "Confusion Matrix for Neural Network
+           1 hidden layer of 4 nodes for validation set") 
 ```
+Looking at the performance metrics for the neural network with 2 nodes:
+
+-   Accuracy highs at 41.8 %
+
+-   Specificity highs at 39.2 %
+
+-   Sensitivity is 78.8%
+
+
+Looking at the performance metrics for the neural network with 4 nodes:
+
+-   Accuracy highs at 48.7 %
+
+-   Specificity highs at 46.9 %
+
+-   Sensitivity is 74.7%
+
+
+From all positive outcome predicted, almost 8.8% (versus 8.1% for 2 nodes) where correctly predicted while almost 96.4% (versus 96.4 for 2 nodes) of negative outcomes where correctly predicted for the higher nodes neural network. Also, the performances for accuracy improved of almost 7% and the one for specificity improved of almost 8%, but the performance was lower for sensitivity of almost 4%.
 
 ### Conclusion on method performance
+We conclude that predicting positive outcomes is still difficult since not even 10% of positive predictions are correctly predicted. Nonetheless, we see that a Neural Net method with one hidden layer and four nodes provides better results than a classification tree to reach our business goal.
 
 ## Logistic Regression
 
