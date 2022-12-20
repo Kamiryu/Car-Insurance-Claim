@@ -691,7 +691,7 @@ validation_prediction_1H_2N <- predict(nn_1H_2N,
 
 validation_prediction_1H_2N_binary <-
   ifelse(validation_prediction_1H_2N[,1]
-         >= 0.5, 0, 1) # Transform probabilities as binary outcome 
+         >= 0.5, 1, 0) # Transform probabilities as binary outcome 
 ```
 We use an algorithm of neural network with one layer of two nodes. The variables that are used as input need to be numerical and normalized (from 0 to 1). These steps has already been done previously and this is why we input the variable model under its "dummified" form. Then, we train the algorithm and use it to predict data from our validation set.
 
@@ -757,26 +757,26 @@ fourfoldplot(conf_matrix_1H4N_valid$table,
 ```
 Looking at the performance metrics for the neural network with 2 nodes:
 
--   Accuracy highs at 41.8 %
+-   Accuracy is 59.4 %
 
--   Specificity highs at 39.2 %
+-   Specificity is 62.0 %
 
--   Sensitivity is 78.8%
+-   Sensitivity is 20.6%
 
 
 Looking at the performance metrics for the neural network with 4 nodes:
 
--   Accuracy highs at 48.7 %
+-   Accuracy highs at 56.7 %
 
--   Specificity highs at 46.9 %
+-   Specificity highs at 59.4 %
 
--   Sensitivity is 74.7%
+-   Sensitivity is 19.0%
 
 
-From all positive outcome predicted, almost 8.8% (versus 8.1% for 2 nodes) where correctly predicted while almost 96.4% (versus 96.4 for 2 nodes) of negative outcomes where correctly predicted for the higher nodes neural network. Also, the performances for accuracy improved of almost 7% and the one for specificity improved of almost 8%, but the performance was lower for sensitivity of almost 4%.
+Comparing 4 nodes to 2 nodes we see that almost 3.1% (versus 3.5% for 2 nodes) positive outcomes predicted where correctly predicted  while almost 91.4% (versus 91.9% for 2 nodes) of negative outcomes where correctly predicted for the higher nodes neural network. Also, the performances for accuracy decreased of almost 3% and the one for specificity decreased of almost 3% and for sensitivity it decreased of almost 1%.
 
 ### Conclusion on method performance
-We conclude that predicting positive outcomes is still difficult since not even 10% of positive predictions are correctly predicted. Nonetheless, we see that a Neural Net method with one hidden layer and four nodes provides better results than a classification tree to reach our business goal.
+We conclude that predicting positive outcomes is still difficult since not even 5% of positive predictions are correctly predicted. The Neural Network method with one hidden layer and two nodes provides better results than four nodes. Nonetheless, the performances for our business case are very poor.
 
 ## Logistic Regression
 
