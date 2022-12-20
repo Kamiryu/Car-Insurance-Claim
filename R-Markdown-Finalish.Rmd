@@ -715,7 +715,7 @@ validation_prediction_1H_4N <- predict(nn_1H_4N,
 
 validation_prediction_1H_4N_binary <-
   ifelse(validation_prediction_1H_4N[,1]
-         >= 0.5, 0, 1) # Transform probabilities as binary outcome 
+         >= 0.5, 1, 0) # Transform probabilities as binary outcome 
 ```
 ### Performance evaluation
 
