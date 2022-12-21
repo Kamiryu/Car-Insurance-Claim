@@ -3,9 +3,6 @@ title: "Car Insurance Claims"
 author: "The miners"
 date: "2022-12-11"
 output:
-  pdf_document:
-    toc: yes
-    toc_depth: '4'
   html_document:
     theme: paper
     highlight: tango
@@ -13,6 +10,9 @@ output:
     toc_float: yes
     toc_collapsed: yes
     toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
 ---
 
 ```{r setup, include=FALSE,warning=FALSE,cache=TRUE}
@@ -739,21 +739,21 @@ fourfoldplot(conf_matrix_1H2N_valid$table,
             1 hidden layer of 2 nodes for validation set") 
 
 
-# Confusion matrix for classification tree with validation set
-conf_matrix_1H4N_valid <- confusionMatrix(
-factor(validation_prediction_1H_4N_binary),
-factor(valid_dummy$is_claim), # change dataset
-positive = "1")
-
-conf_matrix_1H4N_valid
-
-# plot confusion matrix
-fourfoldplot(conf_matrix_1H4N_valid$table,
-           color = c("cyan", "pink"),
-           conf.level = 0,
-           margin = 1,
-           main = "Confusion Matrix for Neural Network
-           1 hidden layer of 4 nodes for validation set") 
+## Confusion matrix for classification tree with validation set
+#conf_matrix_1H4N_valid <- confusionMatrix(
+#factor(validation_prediction_1H_4N_binary),
+#factor(valid_dummy$is_claim), # change dataset
+#positive = "1")
+#
+#conf_matrix_1H4N_valid
+#
+## plot confusion matrix
+#fourfoldplot(conf_matrix_1H4N_valid$table,
+#           color = c("cyan", "pink"),
+#           conf.level = 0,
+#           margin = 1,
+#           main = "Confusion Matrix for Neural Network
+#           1 hidden layer of 4 nodes for validation set") 
 ```
 Looking at the performance metrics for the neural network with 2 nodes:
 
@@ -981,7 +981,7 @@ knn_outcome2 <- as.data.frame(knn_outcome)
 colnames(knn_outcome2) <- c("knn_pred", "knn_prob")
 
 #Neural Network
-nn_outcome2 <- data.frame(validation_prediction_1H_4N[,1])
+nn_outcome2 <- data.frame(validation_prediction_1H_2N[,1])
 nn_outcome2 <- cbind(ifelse(nn_outcome2>=0.5, 1, 0), nn_outcome2)
 colnames(nn_outcome2) <- c("nn_pred","nn_prob")
 
@@ -1072,11 +1072,16 @@ When selecting an ensemble approach, it's crucial to take the trade-offs between
 
 # All methods comparison
 
+Overall, we are interested in a balance between Sensitivity and Specificity as we need to identify correctly claimed files, but also to avoid mistakes in negatives predictions. The situation is tricky since that situation corresponds to a trade-off. Accepting a little decrease in specificity would provide a lot of miclassified negative outcomes given the commonness of that class. On the other hand, accepting a little decrease in sensitivity would goe against or goal.
+
+#### Accuracy
+Accuracy measures the quantity of all correct predictions. 
+Formula: TP+TN /  TP + TN +FP + FN
 ```{r}
 Accuracy <-  data.frame(LR = round(cm3$overall[1],3))  #predict accuracy by using logistic regression 
 Accuracy <- cbind(Accuracy, KNN = round(cmk$overall[1],3))      #predict accuracy by using KNN
 Accuracy <- cbind(Accuracy,CT = round(conf_matrix_tree_v$overall[1],3))    #predict accuracy by using tree
-Accuracy <- cbind(Accuracy,NN=round(conf_matrix_1H4N_valid$overall[1],3))     #predict accuracy by using neural network
+Accuracy <- cbind(Accuracy,NN=round(conf_matrix_1H2N_valid$overall[1],3))     #predict accuracy by using neural network
 Accuracy <- cbind(Accuracy,EM=round(cm_ens_maj$overall[1],3))     #predict accuracy ensemble majority 
 Accuracy <- cbind(Accuracy,EA=round(cm_ens_prob$overall[1],3))     #predict accuracy ensemble average 
 
@@ -1086,12 +1091,16 @@ ggplot(data = Accuracy.melt,aes(x=reorder(variable, value),y=value))+ylab("Accur
   geom_text(aes(label=value), vjust=1.6, color="white", size=3.5)+
   theme_minimal()
 ```
+When comparing all methods we see that two models outperform the others. The ensemble with votes model provides an accuracy of 60% and is followed by Neural net with a score of 58%. The difference is not so big. We retain that Ensemble model with votes is the model providing the most correct positives and negatives predictions.
 
+#### Specificity
+Specificity measures the quantity of correct negative predictions.
+Formula: Specificity = TN / (TN + FP)
 ```{r}
 Specificity_P <-  data.frame(LR = round(cm2$byClass[2],3))  #predict specificity by using logistic regression 
 Specificity_P <- cbind(Specificity_P, KNN = round(cmk$byClass[2],3))       #predict specificity by using KNN
 Specificity_P <- cbind(Specificity_P,CT = round(conf_matrix_tree_v$byClass[2],3))     #predicts specificity tree
-Specificity_P <- cbind(Specificity_P,NN=round(conf_matrix_1H4N_valid$byClass[2],3))    #predict specificity neural network
+Specificity_P <- cbind(Specificity_P,NN=round(conf_matrix_1H2N_valid$byClass[2],3))    #predict specificity neural network
 Specificity_P <- cbind(Specificity_P,EM=round(cm_ens_maj$byClass[2],3))    #predict specificity majority voting 
 Specificity_P <- cbind(Specificity_P,EA=round(cm_ens_prob$byClass[2],3))    #predict specificity ensemble average 
 
@@ -1102,12 +1111,16 @@ ggplot(data = Specificity_P.melt,aes(x=reorder(variable, value),y=value))+ylab("
   theme_minimal()
 
 ```
+KNN model is the best in class in this category. It outperforms the others with a ratio of almost 71%, while the classification tree and ensemble average have poor performances. This score is almost 5% better than the second best model (Logistic Regression). A median performance could be expressed by the Ensemble vote and the Neural network. We retain that KNN is very good at classifying negatives outcomes.
 
+#### Sensitivity
+Sensitivity measures the quantity of correct positive predictions.
+Formula: Sensitivity = TP / (TP + FN)
 ```{r}
 Sensitivity <-  data.frame(LR = round(cm2$byClass[1],3))  #predict Sensitivity by using logistic regression 
 Sensitivity <- cbind(Sensitivity, KNN = round(cmk$byClass[1],3))       #predict Sensitivity by using KNN
 Sensitivity <- cbind(Sensitivity,CT = round(conf_matrix_tree_v$byClass[1],3))     #predicts Sensitivity  tree
-Sensitivity <- cbind(Sensitivity,NN=round(conf_matrix_1H4N_valid$byClass[1],3))    #predict Sensitivity  neural network
+Sensitivity <- cbind(Sensitivity,NN=round(conf_matrix_1H2N_valid$byClass[1],3))    #predict Sensitivity  neural network
 Sensitivity <- cbind(Sensitivity,EM=round(cm_ens_maj$byClass[1],3))    #predict Sensitivity majority voting 
 Sensitivity <- cbind(Sensitivity,EA=round(cm_ens_prob$byClass[1],3))    #predict Sensitivity ensemble average 
 
@@ -1118,5 +1131,10 @@ ggplot(data = Sensitivity.melt,aes(x=reorder(variable, value),y=value))+ylab("Se
   theme_minimal()
 
 ```
+Two models are distinct in this category: Classification tree with a score of almost 71.6 %and Ensemble average with a score of almost 71.9 %. The difference is extremely small and denote a similar performance. The worst performance is provided by the Neural net with 21.7% of sensitivity.
+The median performance could be expressed with the Logistic regression and Ensemble vote models. We retain that Ensemble Average(1st) and Classification tree(2nd) are the models providing the most correct positives predictions.
 
 # Conclusions
+
+Our team completed an analysis related to a car insurance business. We wanted to identify if a policyholder was going to claim a file or not by using different methods of classification and to find the best model predicting such a situation. We did it through few methods providing different performances. They were assessed through a range of metrics such as accuracy, specificity and sensitivity. However, the relevant criterion for determining the best model is found in a trade-off between sensitivity and specificity. This criterion determined the voting ensemble as the best method for our business case.
+Overall, we saw that the best accuracy was given by the ensemble with votes and represented our needed trade-off, but it was also expressed in the median values with respect to specificity and sensitivity. This situation contrasts with the other methods of classification where rather placed at boundaries which doesn't express our willingness of good performance in both correct positive and correct negative predictions. The solution for the car insurance case lies then in the combination of many models and can be expressed through the use of the ensemble voting method.
