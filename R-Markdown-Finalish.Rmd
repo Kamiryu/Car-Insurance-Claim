@@ -3,7 +3,16 @@ title: "Car Insurance Claims"
 author: "The miners"
 date: "2022-12-11"
 output:
-  word_document
+  html_document:
+    theme: paper
+    highlight: tango
+    toc: yes
+    toc_float: yes
+    toc_collapsed: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
 
 
 
@@ -116,16 +125,16 @@ displacement, airbags, gear_box, turning_radius, gross_weight
 
 ```{r}
 #Random forest
-# rf_fit <- randomForest(as.factor(cars$is_claim) ~ .,#Fit
-#                         data = cars_reduced,
-#                         ntree = 500, 
-#                         mtry = 4, # variables randomly sampled as candidates at each # split. 
-#                         importance = TRUE)
-#  
-# varImpPlot(rf_fit, type = 1) # Variable importance
-# sort(round(rf_fit$importance[,4],3), decreasing = TRUE)[1:19]
+ rf_fit <- randomForest(as.factor(cars$is_claim) ~ .,#Fit
+                         data = cars_reduced,
+                         ntree = 500,
+                         mtry = 4, # variables randomly sampled as candidates at each # split.
+                     importance = TRUE)
 
-# Variables keeped by the random forest
+varImpPlot(rf_fit, type = 1) # Variable importance
+sort(round(rf_fit$importance[,4],3), decreasing = TRUE)[1:19]
+
+#Variables keeped by the random forest
 cars_reduced_rf <- cars_reduced[,c("policy_tenure","age_of_car",
                                    "age_of_policyholder","population_density",
                                    "area_cluster","height","width","segment",
@@ -170,11 +179,11 @@ We drop the variables width, segment, engine_type, max_torque, max_power, ncap_r
 ## CHECK code
 
 ```{r}
-# We drop height and weight since model defines these features.
+# We drop height and weight, and length since model defines these features.
 
 logistic_regression_final_variables <- glm(is_claim~.,
                                            family=binomial(link='logit'),
-                                           data= cars_final[,-c(5,7)])
+                                           data= cars_final[,-c(6,8)])
 
 summary(logistic_regression_final_variables)
 
@@ -279,9 +288,8 @@ kable(summary(cars_final), format="markdown")
 ```
 
 ```{r}
-# Commented for time computing
-# ggpairs(cars_final[,c(1:4,6)])+
-#   theme_bw()
+ggpairs(cars_final[,c(1:4,6)])+
+  theme_bw()
 ```
 
 We can see from the plots above that our remaining variables are not highly correlated between them.
@@ -736,21 +744,21 @@ fourfoldplot(conf_matrix_1H2N_valid$table,
             1 hidden layer of 2 nodes for validation set") 
 
 
-## Confusion matrix for classification tree with validation set
-#conf_matrix_1H4N_valid <- confusionMatrix(
-#factor(validation_prediction_1H_4N_binary),
-#factor(valid_dummy$is_claim), # change dataset
-#positive = "1")
-#
-#conf_matrix_1H4N_valid
-#
-## plot confusion matrix
-#fourfoldplot(conf_matrix_1H4N_valid$table,
-#           color = c("cyan", "pink"),
-#           conf.level = 0,
-#           margin = 1,
-#           main = "Confusion Matrix for Neural Network
-#           1 hidden layer of 4 nodes for validation set") 
+# Confusion matrix for classification tree with validation set
+conf_matrix_1H4N_valid <- confusionMatrix(
+factor(validation_prediction_1H_4N_binary),
+factor(valid_dummy$is_claim), # change dataset
+positive = "1")
+
+conf_matrix_1H4N_valid
+
+# plot confusion matrix
+fourfoldplot(conf_matrix_1H4N_valid$table,
+          color = c("cyan", "pink"),
+          conf.level = 0,
+          margin = 1,
+          main = "Confusion Matrix for Neural Network
+          1 hidden layer of 4 nodes for validation set")
 ```
 
 Looking at the performance metrics for the neural network with 2 nodes:
