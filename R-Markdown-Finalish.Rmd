@@ -3,16 +3,10 @@ title: "Car Insurance Claims"
 author: "The miners"
 date: "2022-12-11"
 output:
-  html_document:
-    theme: paper
-    highlight: tango
-    toc: yes
-    toc_float: yes
-    toc_collapsed: yes
-    toc_depth: 4
-  pdf_document:
-    toc: yes
-    toc_depth: '4'
+  word_document
+
+
+
 ---
 
 ```{r setup, include=FALSE,warning=FALSE,cache=TRUE}
@@ -700,24 +694,24 @@ We use an algorithm of neural network with one layer of two nodes. The variables
 
 ```{r}
 # run Neural Network (N.N.) with 1 hidden layer and 4 nodes
-nn_1H_4N <- neuralnet(is_claim ~ .,
-                    data = train_dummy_downsampled,
-                    hidden = c(4)) # 1 hidden layer of 4 nodes
-                    
-
-
-plot(nn_1H_4N, rep="best") # plots the neural net with 4 nodes
-
-
-
-# Predict the output on validation set
-validation_prediction_1H_4N <- predict(nn_1H_4N,
-                                      valid_dummy[,-16],
-                                      type = "class")
-
-validation_prediction_1H_4N_binary <-
-  ifelse(validation_prediction_1H_4N[,1]
-         >= 0.5, 1, 0) # Transform probabilities as binary outcome 
+# nn_1H_4N <- neuralnet(is_claim ~ .,
+#                     data = train_dummy_downsampled,
+#                     hidden = c(4)) # 1 hidden layer of 4 nodes
+#                     
+# 
+# 
+# plot(nn_1H_4N, rep="best") # plots the neural net with 4 nodes
+# 
+# 
+# 
+# # Predict the output on validation set
+# validation_prediction_1H_4N <- predict(nn_1H_4N,
+#                                       valid_dummy[,-16],
+#                                       type = "class")
+# 
+# validation_prediction_1H_4N_binary <-
+#   ifelse(validation_prediction_1H_4N[,1]
+#          >= 0.5, 1, 0) # Transform probabilities as binary outcome 
 ```
 
 ### Performance evaluation
