@@ -18,3 +18,4 @@ data.table
 foreach
 iterators
 doParallel
+reshape2
