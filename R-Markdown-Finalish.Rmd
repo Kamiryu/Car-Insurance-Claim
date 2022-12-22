@@ -22,7 +22,7 @@ output:
 knitr::opts_chunk$set(echo = FALSE,warning=FALSE,cache=TRUE)
 ```
 
-```{r}
+```{r,warning=FALSE}
 # Libraries
 library(naniar)       # Missing values
 library(ggplot2)      # Graphics
@@ -49,17 +49,6 @@ cl <- makeCluster(cores-1)
 registerDoParallel(cl)
 ```
 
-# Introduction
-
-Being able to predict the risk of a policyholder's complaint is fundamental for an insurance company. It could impact its profitability. We decided to conduct an analysis about that industry to better understand and identify the complaint phenomenon with regards to a car insurance business. Specifically, we want to predict whether an insured is going to claim a file. We will try to achieve that through different algorithmic classification methods and by trying to identify the best classification model for such a situation.
-
-A dataset containing information about insurance holders and details about them is going to be used to achive our goal. The dataset is large and comes from the Kaggle web platform. It contains 58'500 observations and 44 variables. Among this information, we find attributes such as, the population density of the insured's city, the age of the policyholder, the age of the insured car, the car model, etc. However, we are particularly interested in the explained variable "Is_claim" It is a boolean indicator showing if a policyholder filed a claim. A positive case will be denoted by 1 and 0 in the opposite case. Therefore we will try to predict it.
-
-To conduct our research, we plan to undertake the following steps. First, we will have a first look at the data and drop some variables, because our data set is very large and requires a lot of computation power. We will continue with a regular exploratory data analysis to understand our data. Then, we will explore different methods of classification. After this step, We are going to explore classification tree, k-nearest neighbors, neural network, logistic regression and ensembles. We will finish by comparing these method to identify the most suitable for our case.
-
-### Dataset preparation
-
-We need to manipulate our data before starting the Exploratory Data Analysis part in order to reduce the amount of data and making our computers ables to handle the dataset.
 
 ```{r,warning=FALSE}
 cars <- read.csv("train.csv", sep=",", header = TRUE)# Original data set
@@ -73,7 +62,7 @@ sapply(cars,function(x) length(unique(x))) # Check unique values
 gg_miss_var(cars, show_pct = TRUE) # See if any missing value
 ```
 
-Our original data set is precisely composed of 58592 observations and 44 variables. Variables are numerical and categorical where some of them are booleans. We notice the presence of variables that might be less relevant. We could drop them in order to alleviate computation resources. Let's start with the variable "ID" which is of no help.
+## Plots for all variables 
 
 ```{r warning=FALSE}
 #Histograms
@@ -91,6 +80,7 @@ cars %>% select(4,7:12,14:19,22,24,30:41) %>% gather() %>%
  geom_bar(color = "black", fill = "#6baed6") +
  theme_minimal()
 ```
+## correlation analysis in order to drop the high corrletted one 
 
 ```{r}
 cars_numeric <- cars[,c(1:3,5:6,13,20:21,23,25:29,42)] # Only numerical values
@@ -119,9 +109,7 @@ corrplot(as.matrix(cor2), # Plot of lower left part
 cars_reduced <- cars[,-c(20,13,23,25,29)]
 ```
 
-Looking at correlations we note a high correlation for the variable displacement such as cylinder (0.87), turning_radius with length (0.95), gross_weight with length (0.86), width with length (0.92).
 
-displacement, airbags, gear_box, turning_radius, gross_weight
 
 ```{r}
 #Random forest
@@ -142,7 +130,7 @@ cars_reduced_rf <- cars_reduced[,c("policy_tenure","age_of_car",
                                    "max_power","ncap_rating","cylinder")]
 ```
 
-To select important variables we also use a random forest method which sort variables by decrease in Gini score. The ranking showing the important variables recommends at least these 15 variables: policy_tenure, age_of_car, age_of_policyholder, population_density, area_cluster, height, width, segment, model, length, engine_type, max_torque, max_power, ncap_rating and cylinder.
+## droped some variables based on random forest analysis and correlation 
 
 ```{r}
 # Correlations
@@ -174,9 +162,9 @@ cars_final <- cbind(cars_reduced, cars$is_claim) # Bind explanatory variable
 colnames(cars_final)[9] <- "is_claim" # Rename column
 ```
 
-We drop the variables width, segment, engine_type, max_torque, max_power, ncap_rating and rating.
+.
 
-## CHECK code
+
 
 ```{r}
 # We drop height and weight, and length since model defines these features.
@@ -189,7 +177,6 @@ summary(logistic_regression_final_variables)
 
 ```
 
-We can see that the coefficient NA for cluster9 is symptomatic of a multicolinearity issue. Therefore, we remove area cluster and keep population instead.
 
 ```{r}
 logistic_regression_final_variables <- glm(is_claim~.,
@@ -199,14 +186,15 @@ logistic_regression_final_variables <- glm(is_claim~.,
 summary(logistic_regression_final_variables)
 ```
 
+## final data set after dropping some variabl by using logistic regression 
 ```{r}
 cars_final <- cars_final[,-c(5,6,8)]
 kable(head(cars_final), format="markdown")
 ```
 
-Based on our previous analysis, our finals explanatory variables would be: policy_tenure, age_of_car, age_of_policyholder, model and population_density.
 
-# EDA
+
+## EDA
 
 ```{r}
 #Histograms
@@ -247,7 +235,7 @@ cars_final %>% select(1:4)  %>% gather() %>%
 
 ```
 
-We can see that the distribution of the data is not symmetrical. However, since the data is already normalized, we are not able to do a log transform on the data except for population density.
+## scaling and normalizing policy tenure and population density 
 
 ```{r}
 # Adjust scale with log for population density
@@ -260,7 +248,10 @@ cars_final$population_density <- as.vector(normalized.pop)
 
 
 # Normalizing policy tenure
-normalized.policy <- (cars_final$policy_tenure - min (cars_final$policy_tenure)) / (max(cars_final$policy_tenure)-min(cars_final$policy_tenure))
+normalized.policy <- (cars_final$policy_tenure - min (
+  cars_final$policy_tenure)) / (max(
+    cars_final$policy_tenure)-min(
+      cars_final$policy_tenure))
 
 cars_final$policy_tenure <- as.vector(normalized.policy)
 ```
@@ -281,18 +272,14 @@ cars_final %>% select(1:4)  %>% gather() %>%
         panel.grid.major.y = element_line(color = "grey98")) 
 ```
 
-With the log transformation on population_density, the distribution has become a little bit more centered and symmetrical.
+
+## the 6 first observations  
 
 ```{r}
 kable(summary(cars_final), format="markdown")
 ```
 
-```{r}
-ggpairs(cars_final[,c(1:4,6)])+
-  theme_bw()
-```
 
-We can see from the plots above that our remaining variables are not highly correlated between them.
 
 ```{r}
 #boxplot for the distribution of 0 1 
@@ -304,25 +291,15 @@ df.melt = melt(df)
 
 df.boxplot = ggplot(df.melt, aes(y=value,is_claim)) + 
   geom_boxplot() + 
-  facet_wrap(~variable, scales = "free", ncol=3) + theme_classic() + xlab("Variables")
+  facet_wrap(~variable, scales = "free", ncol=3) + 
+  theme_classic() + 
+  xlab("Variables")
 
 df.boxplot
 
 ```
 
-We can can the distribution is normal for is_claim = 0 and is_claim = 1 with outliers
-
-```{r}
-barplot(prop.table(table(cars$is_claim)),
-        col = rainbow(2),
-        ylim = c(0, 1),
-        main = "Class Distribution") # outcome variable distribution 
-prop.table(table(cars$is_claim))
-```
-
-When the proportions of the different classes in a classification problem are imbalanced (in our case 1 present about 6% from is_claim), it means that one class (the majority class) is much more frequent than the other class(es) (the minority class(es)). This can cause the model to have a high performance (e.g. high F1-score) on the majority class and low performance on the minority class.
-
-To address this issue, we can re-sample the data to create a more balanced distribution of the classes. This can be done using techniques such as undersampling (removing observations from the majority class) or oversampling . These techniques can help the model to learn better from the minority class and improve its performance on it.
+## data prepration 
 
 ```{r}
 set.seed(1)
@@ -353,19 +330,11 @@ cars_validation[,c(1:4)] <- lapply(cars_validation[,c(1:4)], normalizing)
 summary(cars_validation)
 ```
 
-# Predictive analytics
+
 
 ## Classification tree
 
-### Method's description
 
-A classification tree is a method of supervised algorithm used for classification. It consists in continuously splitting the data into sub-parts based on data features (sub-parts could be segmented in rectangular areas on the graph) until getting only one class in the splitted area. At that point, data's class is the most homogeneous as said previously. The splits are done in such a way that it minimizes the impurity of the new area. The algorithm may chose one of the following measures of impurity: Gini Index or Entropy measure. These measures range between 0 and 1 and allow to identify to which class the data belongs.
-
-*Intuition*: A higher number of terminal nodes is expected to decrease the overall error until reaching the point of overfitting.
-
-Therefore, it is wise to stop a tree's growth. In that sense, we need to prune the tree and use cross-validation to get a best tree size.
-
-### Method application
 
 ```{r}
 tree_fit <- rpart(train_downsampling$is_claim ~.,
@@ -384,7 +353,6 @@ pred_tree_v_tr <- predict(tree_fit,
                          type ="class")
 ```
 
-We start by fitting a full grown tree. It allows us to get a first look.
 
 ```{r}
 # Find the best cp with minimal xerror ||  /!\ code may need to be improved
@@ -395,9 +363,7 @@ cp_minimal <- tree_fit$cptable[which.min(
 pruned.tree <- prune(tree_fit, cp= cp_minimal) # Prune the train model with lowest cp
 ```
 
-We want to identify the lowest cp value to prune the tree. That value equals 0.001 and is similar to the default value that we chosed to compute the full grown classification tree.
 
-Also, it is known that we should not choose only a tree based on it's cp, but we should also consider the tree size. Ordinarily, we would like to have a small tree with a small cp. Such a tree would avoid overfitting. To choose a tree size we should find the smallest minimum error within one standard error and a small CP value.
 
 ```{r}
 # Cross-validation
@@ -425,7 +391,7 @@ kable(table_cp)
 best_cp <- table_cp[as.integer(names(rows_small_errors)[1]),1]
 ```
 
-We see that the 16th observation where nsplit = 35 and CP = 0.0014509 gives the best error choice.
+
 
 ```{r}
 pruned.tree <- prune(tree_fit, cp = best_cp) # Prune the train model with best cp
@@ -435,7 +401,7 @@ rpart.plot(pruned.tree) # Plot the tree with best size
 sum(pruned.tree$frame$ncompete == 0) # Number of leaves
 ```
 
-The resulting pruned tree at its best size has 36 leaves.
+
 
 ### Performance evaluation
 
@@ -455,15 +421,7 @@ fourfoldplot(conf_matrix_tree_v$table,
              Tree for validation set") 
 ```
 
-Looking at the performance metrics for the full grown tree:
 
--   Accuracy highs at 43.2%
-
--   Specificity highs at 41%
-
--   Sensitivity is 74.5%
-
-We see that the tree is better at classifying negative than positives outcome and struggles with false positive values that represents the majority of classifieds values.
 
 ```{r}
 # Prediction on Validation data
@@ -488,19 +446,7 @@ fourfoldplot(conf_matrix_tree_v$table,
 
 ```
 
-Looking at the performance metrics for the best size tree:
 
--   Accuracy highs at 47.2 %
-
--   Specificity highs at 45.6 %
-
--   Sensitivity is 71.6%
-
-From all positive outcome predicted, almost 8.3% where right while almost 95.9% of negative outcomes where correctly predicted. Also, the performances for accuracy improved of almost 4% and the one for specificity improved of almost 5%, but the performance was lower for sensitivity of almost 3%.
-
-### Conclusion on method's performance
-
-We conclude that predicting positive outcomes is difficult for the classification tree model since not even 10% of its positive predictions are right, even if cross-validation has been used. The method is better at predicting negative outcomes than positive ones. Therefore, we may want to analyse an other model with hopping to find better results with respect to positive prediction.
 
 #### Lift Chart
 
@@ -521,10 +467,6 @@ topDecileLift(tree.outcome,  factor(cars_validation$is_claim))
 
 ## KNN
 
-### Method's description
-
-The k-nearest-neighbors algorithm that can be used for classification. To classify or predict a new record, the method relies on finding "similar" records in the training data. These "neighbors" are then used to derive a classification for the new record by voting (for classification) .
-
 ### Data transformation
 
 ```{r}
@@ -532,7 +474,8 @@ The k-nearest-neighbors algorithm that can be used for classification. To classi
 cars_final$model <- as.factor(cars_final$model)                       # change variable format to factor 
 
 dummies <- dummyVars(~ ., data = cars_final)                             # create object for dummy variables
-cars_final_dummy <- as.data.frame(predict(dummies, newdata = cars_final))      # apply dummies to data
+cars_final_dummy <- as.data.frame(predict(dummies,
+                                          newdata = cars_final))      # apply dummies to data
 
 cars_final$is_claim <- as.factor(cars_final$is_claim)                # change variable format to factor
 cars_final_dummy$is_claim <- as.factor(cars_final_dummy$is_claim) 
@@ -543,8 +486,8 @@ str(cars_final_dummy)
 
 train_dummy <- cars_final_dummy[index,] # training set with dummies  
 valid_dummy <- cars_final_dummy[-index,] #validation set with dummies
-train_dummy_downsampled <- downSample(train_dummy[,-16],train_dummy$is_claim,yname = "is_claim") # undersampling for having same probation 
-
+train_dummy_downsampled <- downSample(train_dummy[,-16],
+                                      train_dummy$is_claim,yname = "is_claim") # undersampling for having same probation 
 
 # Normalizing data
 train_dummy_downsampled[,c(1:4)] <- lapply(train_dummy_downsampled[,c(1:4)], normalizing)
@@ -552,49 +495,62 @@ train_dummy_downsampled[,c(1:4)] <- lapply(train_dummy_downsampled[,c(1:4)], nor
 valid_dummy[,c(1:4)] <- lapply(valid_dummy[,c(1:4)], normalizing)
 ```
 
-### Method application
+### for loop for finding the optimum k for each measurement 
 
 ```{r}
 set.seed(1)
 # Find optimal k
 
 # Data frame for k from 1 to 50 and respective accuracy
-accuracy <- data.frame(k = seq(1, 50, 1), overallaccuracy = rep(0, 50))  
+accuracy <- data.frame(k = seq(1, 50, 1),
+                       overallaccuracy = rep(0, 50))  
 
 # Use for loop to find k with highest accuracy
 for (i in 1:50) {
-  knn.pred<-knn(train_dummy_downsampled[,-16],valid_dummy[,-16],
+  knn.pred<-knn(train_dummy_downsampled[,-16],
+                valid_dummy[,-16],
                 cl=train_dummy_downsampled[,16],k=i)
-  accuracy[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$overall[1]
+  accuracy[i,2]<-confusionMatrix(knn.pred,
+                                 valid_dummy[,16])$overall[1]
 } 
 # Data frame for k from 1 to 50 and respective specificity
-Specificity <-  data.frame(k = seq(1, 50, 1), overallspecificity = rep(0, 50))
+Specificity <-  data.frame(k = seq(1, 50, 1),
+                           overallspecificity = rep(0, 50))
 
 # Use for loop to find k with highest specificity
 for (i in 1:50) {
-  knn.pred<-knn(train_dummy_downsampled[,-16],valid_dummy[,-16],
+  knn.pred<-knn(train_dummy_downsampled[,-16],
+                valid_dummy[,-16],
                 cl=train_dummy_downsampled[,16],k=i)
-  Specificity[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$byClass[2]
+  Specificity[i,2]<-confusionMatrix(knn.pred,
+                                    valid_dummy[,16])$byClass[2]
 } 
 # Data frame for k from 1 to 50 and respective Sensitivity 
-Sensitivity  <-  data.frame(k = seq(1, 50, 1), overallSensitivity  = rep(0, 50))
+Sensitivity  <-  data.frame(k = seq(1, 50, 1),
+                            overallSensitivity  = rep(0, 50))
 
 # Use for loop to find k with highest Sensitivity 
 for (i in 1:50) {
-  knn.pred<-knn(train_dummy_downsampled[,-16],valid_dummy[,-16],
+  knn.pred<-knn(train_dummy_downsampled[,-16],
+                valid_dummy[,-16],
                 cl=train_dummy_downsampled[,16],k=i)
-  Sensitivity[i,2]<-confusionMatrix(knn.pred,valid_dummy[,16])$byClass[1]
+  Sensitivity[i,2]<-confusionMatrix(knn.pred,
+                                    valid_dummy[,16])$byClass[1]
 } 
 
 
 
 ```
+
+### max k 
 
 ```{r}
 which(accuracy[,2] == max(accuracy[,2]))   # max accuracy
 which(Specificity[,2] == max(Specificity[,2]))   # max specificity 
 which(Sensitivity[,2] == max(Sensitivity[,2]))   # max specificity 
 ```
+
+### plotting the result 
 
 ```{r}
 # Plot accuracy for different k
@@ -624,7 +580,7 @@ ggplot(Specificity, aes(k, overallspecificity)) +
 
 ```
 
-Since we are looking for k which give us max optimum value of Specificity we chose k = 41
+### prediction and confusion matrix for knn
 
 ```{r}
 knn.pred.valid <- knn(train_dummy_downsampled[, -16], valid_dummy[, -16], cl = train_dummy_downsampled[, 16], k = 41 ,prob = T)     #prediction on validation data using best k=6
@@ -652,27 +608,11 @@ liftChart(knn_outcome$knn_prob, factor(valid_dummy$is_claim))
 topDecileLift(knn_outcome$knn_prob, factor(valid_dummy$is_claim))
 ```
 
-With a top decile lift of 1.40, the model's lift drastically decreases at the second decile then slowly declines with each decile.
+.
 
 ## Neural Network
 
-### Method description:
-
-Neural network tries to identify complex relationships between variables. It can be represented by edges (weights) interconnecting nodes (values) and organized in different layers. There are three levels of layer:
-
-1.  *Input layer:* concerned with the predictors
-
-2.  *Hidden layer:* concerned with weighted relations
-
-3.  *Output layer:* concerned with the final output (class)
-
-*Intuition*: Transform input values and identify relations (translated by weights) to identify output values.
-
-Values from variables go into the input layer. Then we initialize a very small and random weight in relation with our imputed values to start training the model. The resulting value is a node in the hidden layer. Weights are then updated again for many times in order to find an optimum value which minimize the output error (predicted output with respect to the true output). These weights depend on a function called "transfer function".
-
 ### Method application
-
-Common practice is to use 1 hidden layer for fitting neural networks. We are first going to try the algorithm with two nodes. Next, we are going to continue the analysis with a third node in order to compare performances.
 
 #### 1 hidden layer and 2 nodes
 
@@ -696,7 +636,6 @@ validation_prediction_1H_2N_binary <-
          >= 0.5, 1, 0) # Transform probabilities as binary outcome 
 ```
 
-We use an algorithm of neural network with one layer of two nodes. The variables that are used as input need to be numerical and normalized (from 0 to 1). These steps has already been done previously and this is why we input the variable model under its "dummified" form. Then, we train the algorithm and use it to predict data from our validation set.
 
 #### 1 hidden layer and 4 nodes
 
@@ -761,33 +700,8 @@ fourfoldplot(conf_matrix_1H4N_valid$table,
           1 hidden layer of 4 nodes for validation set")
 ```
 
-Looking at the performance metrics for the neural network with 2 nodes:
-
--   Accuracy is 59.4 %
-
--   Specificity is 62.0 %
-
--   Sensitivity is 20.6%
-
-Looking at the performance metrics for the neural network with 4 nodes:
-
--   Accuracy highs at 56.7 %
-
--   Specificity highs at 59.4 %
-
--   Sensitivity is 19.0%
-
-Comparing 4 nodes to 2 nodes we see that almost 3.1% (versus 3.5% for 2 nodes) positive outcomes predicted where correctly predicted while almost 91.4% (versus 91.9% for 2 nodes) of negative outcomes where correctly predicted for the higher nodes neural network. Also, the performances for accuracy decreased of almost 3% and the one for specificity decreased of almost 3% and for sensitivity it decreased of almost 1%.
-
-### Conclusion on method performance
-
-We conclude that predicting positive outcomes is still difficult since not even 5% of positive predictions are correctly predicted. The Neural Network method with one hidden layer and two nodes provides better results than four nodes. Nonetheless, the performances for our business case are very poor.
 
 ## Logistic Regression
-
-### Method Description
-
-The logistic regression is a model that is also suited for binary response variables. It is a modeling technique used in statistics to predict the probability of an event occurring based on different independent variables. <br> Building the model with a logit link function as it is usually the best suited one for the logistic regression.
 
 ### Method Application
 
@@ -797,7 +711,6 @@ cars.lg <- glm(is_claim ~., data= train_downsampling, family=binomial(link="logi
 summary(cars.lg) # Displaying the resulting model
 ```
 
-From the dummies born from "model" variable, only model =M2 is statistically significant. H0 cannot be rejected for the beta estimates of population_density and age_of_policeholder either. The other explanatory variables are significant, but the intercept is not. <br>
 
 ```{r}
 PlotResidLogist(cars.lg) # Deviance residuals
@@ -1071,9 +984,7 @@ Overall, given that the majority vote strategy offers greater precision and spec
 
 Overall, we are interested in a balance between Sensitivity and Specificity as we need to identify correctly claimed files, but also to avoid mistakes in negatives predictions. The situation is tricky since that situation corresponds to a trade-off. Accepting a little decrease in specificity would provide a lot of misclassified negative outcomes given the commonness of that class. On the other hand, accepting a little decrease in sensitivity would goe against or goal.
 
-#### Accuracy
-
-Accuracy measures the quantity of all correct predictions. Formula: TP+TN / TP + TN +FP + FN
+## overall Accuracy
 
 ```{r}
 Accuracy <-  data.frame(LR = round(cm3$overall[1],3))  #predict accuracy by using logistic regression 
@@ -1084,17 +995,17 @@ Accuracy <- cbind(Accuracy,EM=round(cm_ens_maj$overall[1],3))     #predict accur
 Accuracy <- cbind(Accuracy,EA=round(cm_ens_prob$overall[1],3))     #predict accuracy ensemble average 
 
 Accuracy.melt = melt(Accuracy)
-ggplot(data = Accuracy.melt,aes(x=reorder(variable, value),y=value))+ylab("Accuracy") + xlab("Method") +
+ggplot(data = Accuracy.melt,aes(x=reorder(variable, value),y=value))+
+  ylab("Accuracy") + 
+  xlab("Method") +
   geom_bar(stat="identity", fill="steelblue")+
   geom_text(aes(label=value), vjust=1.6, color="white", size=3.5)+
   theme_minimal()
 ```
 
-When comparing all methods we see that two models outperform the others. The ensemble with votes model provides an accuracy of 59.9% and is followed by Neural net with a score of 58.1%. The difference is not so big. We retain that Ensemble model with votes is the model providing the most correct positives and negatives predictions.
 
-#### Specificity
+## overall Specificity
 
-Specificity measures the quantity of correct negative predictions. Formula: Specificity = TN / (TN + FP)
 
 ```{r}
 Specificity_P <-  data.frame(LR = round(cm2$byClass[2],3))  #predict specificity by using logistic regression 
@@ -1105,18 +1016,17 @@ Specificity_P <- cbind(Specificity_P,EM=round(cm_ens_maj$byClass[2],3))    #pred
 Specificity_P <- cbind(Specificity_P,EA=round(cm_ens_prob$byClass[2],3))    #predict specificity ensemble average 
 
 Specificity_P.melt = melt(Specificity_P)
-ggplot(data = Specificity_P.melt,aes(x=reorder(variable, value),y=value))+ylab("Specificity") + xlab("Method") +
+ggplot(data = Specificity_P.melt,aes(x=reorder(variable, value),y=value))+
+  ylab("Specificity") + 
+  xlab("Method") +
   geom_bar(stat="identity", fill="steelblue")+
   geom_text(aes(label=value), vjust=1.6, color="white", size=3.5)+
   theme_minimal()
 
 ```
 
-KNN model is the best in class in this category. It outperforms the others with a ratio of 70.6%, while the classification tree and ensemble average have poor performances. This score is almost 5% better than the second best model (Logistic Regression). A median performance could be expressed by the Ensemble vote and the Neural network. We retain that KNN is very good at classifying negatives outcomes.
 
-#### Sensitivity
-
-Sensitivity measures the quantity of correct positive predictions. Formula: Sensitivity = TP / (TP + FN)
+## overall Sensitivity
 
 ```{r}
 Sensitivity <-  data.frame(LR = round(cm2$byClass[1],3))  #predict Sensitivity by using logistic regression 
@@ -1127,15 +1037,13 @@ Sensitivity <- cbind(Sensitivity,EM=round(cm_ens_maj$byClass[1],3))    #predict 
 Sensitivity <- cbind(Sensitivity,EA=round(cm_ens_prob$byClass[1],3))    #predict Sensitivity ensemble average 
 
 Sensitivity.melt = melt(Sensitivity)
-ggplot(data = Sensitivity.melt,aes(x=reorder(variable, value),y=value))+ylab("Sensitivity") + xlab("Method") +
+ggplot(data = Sensitivity.melt,aes(x=reorder(variable, value),y=value)) +
+  ylab("Sensitivity") + 
+  xlab("Method") +
   geom_bar(stat="identity", fill="steelblue")+
   geom_text(aes(label=value), vjust=1.6, color="white", size=3.5)+
   theme_minimal()
 
 ```
 
-Two models are distinct in this category: Classification tree with a score of almost 71.6% and Ensemble average with a score of almost 71.9 %. The difference is extremely small and denote a similar performance. The worst performance is provided by the Neural net with 21.7% of sensitivity. The median performance could be expressed with the Logistic regression and Ensemble vote models. We retain that Ensemble Average(1st) and Classification tree(2nd) are the models providing the most correct positives predictions.
 
-# Conclusions
-
-Our team completed an analysis related to a car insurance business. We wanted to identify if a policyholder was going to claim a file or not by using different methods of classification and to find the best model predicting such a situation. We did it through few methods providing different performances. They were assessed through a range of metrics such as accuracy, specificity and sensitivity. However, the relevant criterion for determining the best model is found in a trade-off between sensitivity and specificity. This criterion determined the voting ensemble as the best method for our business case. Overall, we saw that the best accuracy was given by the ensemble with votes and represented our needed trade-off, but it was also expressed in the median values with respect to specificity and sensitivity. This situation contrasts with the other methods of classification where rather placed at boundaries which doesn't express our willingness of good performance in both correct positive and correct negative predictions. The solution for the car insurance case lies then in the combination of many models and can be expressed through the use of the ensemble voting method.
