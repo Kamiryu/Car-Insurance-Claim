@@ -610,24 +610,31 @@ validation_prediction_1H_2N_binary <-
 
 #### 1 hidden layer and 4 nodes
 
+
+We had to comment out the code related to the neural network with 4 nodes because it leads to an error most of the time, making the knitting impossible
+
 ```{r}
+
 # run Neural Network (N.N.) with 1 hidden layer and 4 nodes
-nn_1H_4N <- neuralnet(is_claim ~ .,
-                   data = train_dummy_downsampled,
-                   hidden = c(4)) # 1 hidden layer of 4 nodes
+# nn_1H_4N <- neuralnet(is_claim ~ .,
+#                    data = train_dummy_downsampled,
+#                    hidden = c(4)) # 1 hidden layer of 4 nodes
                    
 
-plot(nn_1H_4N, rep="best") # plots the neural net with 4 nodes
+
+
+
+# plot(nn_1H_4N, rep="best") # plots the neural net with 4 nodes
 
 
 # Predict the output on validation set
-validation_prediction_1H_4N <- predict(nn_1H_4N,
-                                     valid_dummy[,-16],
-                                     type = "class")
-
-validation_prediction_1H_4N_binary <-
- ifelse(validation_prediction_1H_4N[,1]
-        >= 0.5, 1, 0) # Transform probabilities as binary outcome 
+# validation_prediction_1H_4N <- predict(nn_1H_4N,
+#                                      valid_dummy[,-16],
+#                                      type = "class")
+# 
+# validation_prediction_1H_4N_binary <-
+#  ifelse(validation_prediction_1H_4N[,1]
+#         >= 0.5, 1, 0) # Transform probabilities as binary outcome 
 ```
 
 ### Performance evaluation
@@ -651,20 +658,20 @@ fourfoldplot(conf_matrix_1H2N_valid$table,
 
 
 # Confusion matrix for classification tree with validation set
-conf_matrix_1H4N_valid <- confusionMatrix(
-  factor(validation_prediction_1H_4N_binary),
-  factor(valid_dummy$is_claim), # change dataset
-  positive = "1")
-
-conf_matrix_1H4N_valid
+# conf_matrix_1H4N_valid <- confusionMatrix(
+#   factor(validation_prediction_1H_4N_binary),
+#   factor(valid_dummy$is_claim), # change dataset
+#   positive = "1")
+# 
+# conf_matrix_1H4N_valid
 
 # plot confusion matrix
-fourfoldplot(conf_matrix_1H4N_valid$table,
-          color = c("cyan", "pink"),
-          conf.level = 0,
-          margin = 1,
-          main = "Confusion Matrix for Neural Network
-          1 hidden layer of 4 nodes")
+# fourfoldplot(conf_matrix_1H4N_valid$table,
+#           color = c("cyan", "pink"),
+#           conf.level = 0,
+#           margin = 1,
+#           main = "Confusion Matrix for Neural Network
+#           1 hidden layer of 4 nodes")
 ```
 
 ## Logistic Regression
