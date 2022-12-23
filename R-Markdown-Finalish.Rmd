@@ -19,7 +19,9 @@ output:
 knitr::opts_chunk$set(echo = TRUE,warning=FALSE,cache=TRUE)
 ```
 
-```{r,warning=FALSE}
+# Code only
+
+```{r,warning=FALSE,message=FALSE}
 # Libraries
 library(naniar)       # Missing values
 library(ggplot2)      # Graphics
@@ -41,6 +43,11 @@ library(data.table)
 # Local importation
 source("PlotResidLogist.R") # Deviance Residuals
 ```
+
+
+
+## EDA
+
 
 ```{r,warning=FALSE}
 cars <- read.csv("train.csv", sep=",", header = TRUE)# Original data set
@@ -104,6 +111,7 @@ cars_reduced <- cars[,-c(20,13,23,25,29)]
 
 
 #### Random forest for variable selection
+
 ```{r}
 #Random forest
  rf_fit <- randomForest(as.factor(cars$is_claim) ~ .,#Fit
@@ -183,7 +191,6 @@ cars_final <- cars_final[,-c(5,6,8)]
 kable(head(cars_final), format="markdown")
 ```
 
-## EDA
 
 ```{r}
 #Histograms
@@ -285,7 +292,7 @@ df.boxplot
 
 ```
 
-## Data prepration
+## Data preparation
 
 ```{r}
 set.seed(1)
