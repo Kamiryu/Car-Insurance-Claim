@@ -671,49 +671,50 @@ fourfoldplot(conf_matrix_1H4N_valid$table,
 
 ### Method Application
 
+All variables logistic regression
 ```{r}
 cars.lg <- glm(is_claim ~., data= train_downsampling, family=binomial(link="logit"))
 
 summary(cars.lg) # Displaying the resulting model
 ```
 
+Plot of residuals
 ```{r}
 PlotResidLogist(cars.lg) # Deviance residuals
 ```
 
-If we plot the deviance residuals, we notice that the positive residuals and negative ones each form a clear group.<br> The residuals appearing only on one half of the observations is due to downsampling. The way every observation is tightly grouped may result from the artificially generated data. It is also the case for the pearson residuals. We can see an extreme residual that stands out (observation 440). Considering the amount of observations, this single observation should not affect the model too much. A robust logisitc regression is not required.
 
+analysis of the deviance with anova
 ```{r}
 anova(cars.lg, test="Chisq")
 ```
 
-According to the analysis of the deviance table, "population_density","age_of_policyholder", and "model" could be unworth to be part of the model with p-value\>0.05. <br> To further investigate the importance of the variables, we can run a stepwise selection.
 
+backward selection
 ```{r}
 cars_glm_back <- step(cars.lg, direction = "backward") # Model with backward selection
 summary(cars_glm_back)
 ```
 
-The backward selection results in a model with 3 explanatory variables: policy_tenure and age_of_car. Every beta is very stastically significant.
 
+forward selection
 ```{r}
 cars_glm_forward <- step(cars.lg, direction = "forward") # Model with forward selection
 summary(cars_glm_forward)
 ```
 
-The forward selection ends up with different variables: the model is the same as the full one. This selection results in a minority of statistically significant beta estimates.
 
+backward+forward selection
 ```{r}
 cars_glm_both <- step(cars.lg, direction = "both") # Forward and backward
 summary(cars_glm_both)
 ```
 
-The selection with forward and backward at the same time results in the same variables as the backward selection. Every coefficient is also significant. The AIC of the reduced model is marginally better.
+
 
 ### Performance Evaluation
 
-Confusion Matrix
-
+Confusion Matrix for logistic regression with all variables
 ```{r}
 # Full model
 pred_logi <- predict(cars.lg, newdata = cars_validation[,-16], type = "response")
@@ -736,8 +737,8 @@ fourfoldplot(cm1$table,
              main = "Confusion Matrix for the full logistic regression") 
 ```
 
-The downsampling allows us to better detect when a claim occurs, but it is at the cost of increasing the false positives which are numerous as we can see. We can try to choose another cutoff to see if we can improve the model.
 
+Confusion Matrix for logistic regression with all variables and 55% cutoff
 ```{r}
 # cutoff at probability of 0.55
 logi_outcome <- as.data.table(pred_logi)
@@ -756,8 +757,9 @@ fourfoldplot(cm2$table,
              main = "Confusion Matrix for the full logistic regression") 
 ```
 
-We can see the tradeoff right away. The 5% increased on the cutoff value reduced the predictions of is_claim by about 30% for both true positives and false positives.
 
+
+Confusion matrix for logistic regression with reduced number of variables
 ```{r}
 # Backward/Both 
 cars.lg2 <- glm(is_claim ~ policy_tenure+age_of_car , data= train_downsampling, family=binomial(link="logit"))
@@ -780,8 +782,8 @@ fourfoldplot(cm3$table,
              main = "Confusion Matrix for the reduced logistic regression") 
 ```
 
-With the model with a reduced number of variables, we seem to get a little bit more false positives true positive: more is_claim= 1 predictions. The prediction performance is very similar, but one could argue that this reduced model performs marginally better since it reduces the false positives more than the true positives. Thus, to reduce computational resources and have a slightly better performing model, we can choose the model with the reduced number of variables. <br> <br> We can try to see whether the model can perform better with the whole training set combined with a very low cutoff value.
 
+Reduced model performance metrics
 ```{r}
 # Accuracy
 cm3$overall["Accuracy"]
@@ -791,8 +793,7 @@ cm3$byClass["Sensitivity"]
 cm3$byClass["Specificity"]
 ```
 
-The accuracy of 51.8% reflects the high number of false positives and negatives.
-
+Reduced model with the full training dataset instead of the downsample
 ```{r}
 # Backward/Both 
 cars.lg3 <- glm(is_claim ~ policy_tenure+age_of_car , data= cars_train, family=binomial(link="logit"))
@@ -815,39 +816,36 @@ fourfoldplot(cm4$table,
              main = "Confusion Matrix for the reduced logistic regression") 
 ```
 
+Accuracy
 ```{r}
 # Accuracy
 cm4$overall["Accuracy"]
 ```
 
-With a cutoff of 6%, the model performs similarly to the model constructed on the downsample. Decreasing of increasing the cutoff results in the same aforementioned tradeoff. We get similar performance with this model, but at very low cutoff values. At a 0.5 and even 0.2, the sensitivity/specificity tradeoff is maxed out: specificity is at 1 and sensitivity 0.
+
 
 Lift Chart
-
 ```{r}
 logi_outcome <- as.data.table(pred_logi_back)
 
 liftChart(factor(logi_outcome$pred_logi_back) , factor(cars_validation$is_claim))
 ```
 
+topdecile
 ```{r}
 topDecileLift(factor(logi_outcome$pred_logi) , factor(cars_validation$is_claim))
 ```
 
-The top decile lift is at 1.63, and it gradually decreases in a linear fashion.
 
-### Conclusion on method performance
 
-The logistic regression's performance is not great. The accuracy is only at 51.8% for the chosen model (2 explanatory variables with downsample) and the sensitivity of 64.4% lets room for a lot of undetected claims. The false positives are also numerous with a specificity of 50.8%.
 
 ## Ensemble
 
-### Methods's description
 
-Machine learning ensemble approaches combine the results of various models to provide a single prediction. By avoiding overfitting and enhancing prediction robustness, ensemble approaches aim to enhance the generalization performance of the model.
 
 ### Methods's application
 
+Extracting probabilities and prediction of each model
 ```{r}
 #Actual outcome
 actual_outcome <- cars_validation[,6]
@@ -875,6 +873,7 @@ ensemble <- data.table(actual_outcome,tree.outcome2,knn_outcome2,nn_outcome2,log
 
 ```
 
+Computing average probability and majority vote
 ```{r}
 # Average probabilities column
 ensemble[, avg_prob := (logi_prob + knn_prob + tree_prob + nn_prob) / 4]
@@ -890,8 +889,7 @@ kable(ensemble[1:10, ], format = "markdown")
 
 ### Performance Evaluation
 
-Using the average probability with a 0.5 cutoff
-
+Confusion matrix for the average probability approach
 ```{r}
 #Confusion Matrix 
 cm_ens_prob <- confusionMatrix(
@@ -906,6 +904,7 @@ fourfoldplot(cm_ens_prob$table,
              main = "Confusion Matrix Ensemble Average Probability") 
 ```
 
+Perfomance metrics average probability
 ```{r}
 # Accuracy
 cm_ens_prob$overall["Accuracy"]
@@ -915,8 +914,7 @@ cm_ens_prob$byClass["Sensitivity"]
 cm_ens_prob$byClass["Specificity"]
 ```
 
-Using the majority vote
-
+Confusion matrix for the majority vote approach
 ```{r}
 cm_ens_maj <- confusionMatrix(
   factor(ensemble$maj_vote),
@@ -930,6 +928,7 @@ fourfoldplot(cm_ens_maj$table,
              main = "Confusion Matrix Ensemble Majority vote") 
 ```
 
+Performance metrics majority vote
 ```{r}
 # Accuracy
 cm_ens_maj$overall["Accuracy"]
@@ -939,11 +938,7 @@ cm_ens_maj$byClass["Sensitivity"]
 cm_ens_maj$byClass["Specificity"]
 ```
 
-The majority vote approach's lesser sensitivity may be due in part to the fact that its projections are more "moderate" in terms of is_claim=1 predictions. Making a choice based on the majority vote effectively requires that the majority of the models agree on the forecast, which can reduce the likelihood of false positives (i.e., predicting the outcome variable as 1 when it is actually 0). Because there will be fewer overall true positive predictions, the sensitivity may be reduced as a result. <br> <br> On the other hand, because it is essentially averaging the probabilities of all the models, the average probability technique may be less conservative in its forecasts (more is_claim =1 predictions). Although there may be more false positives as a result, there may also be more actual positive predictions, increasing sensitivity.
 
-### Conclusion
-
-Overall, given that the majority vote strategy offers greater precision and specificity than the average probability approach, it would be a preferable option for this particular case. <br> When selecting an ensemble approach, it's crucial to take the trade-offs between the various performance measures into account because different applications could give particular metrics a higher priority (e.g., sensitivity versus specificity).
 
 # All methods comparison
 
