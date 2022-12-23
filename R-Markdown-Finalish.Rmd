@@ -13,21 +13,18 @@ output:
   pdf_document:
     toc: yes
     toc_depth: '4'
-
-
-
 ---
 
 ```{r setup, include=FALSE,warning=FALSE,cache=TRUE}
-knitr::opts_chunk$set(echo = FALSE,warning=FALSE,cache=TRUE)
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE,cache=TRUE)
 ```
 
 ```{r,warning=FALSE}
 # Libraries
 library(naniar)       # Missing values
 library(ggplot2)      # Graphics
-library(dplyr)
-library(tidyr)
+library(dplyr)        # Manipulate data
+library(tidyr)        # Create tidy data
 library(randomForest) # Random forest
 library(corrplot)     # Plot correlations
 library(knitr)        #Table presentation
@@ -37,18 +34,13 @@ library(rpart)        # trees
 library(caret)        # preprocess data
 library(rpart.plot)   # plot trees
 library(forecast)     # accuracy
-library(neuralnet)    # Neural netwok
+library(neuralnet)    # Neural network
 library(CustomerScoringMetrics) #Lift and gain
 library(data.table)
 
+# Local importation
 source("PlotResidLogist.R") # Deviance Residuals
-
-library(doParallel)#Accelerating computations by setting CPU to work in parallel
-cores = detectCores()
-cl <- makeCluster(cores-1)
-registerDoParallel(cl)
 ```
-
 
 ```{r,warning=FALSE}
 cars <- read.csv("train.csv", sep=",", header = TRUE)# Original data set
@@ -62,7 +54,7 @@ sapply(cars,function(x) length(unique(x))) # Check unique values
 gg_miss_var(cars, show_pct = TRUE) # See if any missing value
 ```
 
-## Plots for all variables 
+#### Plots for all variables
 
 ```{r warning=FALSE}
 #Histograms
@@ -80,7 +72,8 @@ cars %>% select(4,7:12,14:19,22,24,30:41) %>% gather() %>%
  geom_bar(color = "black", fill = "#6baed6") +
  theme_minimal()
 ```
-## correlation analysis in order to drop the high corrletted one 
+
+#### correlation analysis in order to drop the highly corrletted ones
 
 ```{r}
 cars_numeric <- cars[,c(1:3,5:6,13,20:21,23,25:29,42)] # Only numerical values
@@ -110,7 +103,7 @@ cars_reduced <- cars[,-c(20,13,23,25,29)]
 ```
 
 
-
+#### Random forest for variable selection
 ```{r}
 #Random forest
  rf_fit <- randomForest(as.factor(cars$is_claim) ~ .,#Fit
@@ -130,7 +123,7 @@ cars_reduced_rf <- cars_reduced[,c("policy_tenure","age_of_car",
                                    "max_power","ncap_rating","cylinder")]
 ```
 
-## droped some variables based on random forest analysis and correlation 
+#### Dropping variables based on random forest analysis and correlation
 
 ```{r}
 # Correlations
@@ -162,9 +155,7 @@ cars_final <- cbind(cars_reduced, cars$is_claim) # Bind explanatory variable
 colnames(cars_final)[9] <- "is_claim" # Rename column
 ```
 
-.
-
-
+#### Logistic regression
 
 ```{r}
 # We drop height and weight, and length since model defines these features.
@@ -177,7 +168,6 @@ summary(logistic_regression_final_variables)
 
 ```
 
-
 ```{r}
 logistic_regression_final_variables <- glm(is_claim~.,
                                            family=binomial(link='logit')
@@ -186,13 +176,12 @@ logistic_regression_final_variables <- glm(is_claim~.,
 summary(logistic_regression_final_variables)
 ```
 
-## final data set after dropping some variabl by using logistic regression 
+#### Final dataset after dropping some variables by using logistic regression
+
 ```{r}
 cars_final <- cars_final[,-c(5,6,8)]
 kable(head(cars_final), format="markdown")
 ```
-
-
 
 ## EDA
 
@@ -235,7 +224,7 @@ cars_final %>% select(1:4)  %>% gather() %>%
 
 ```
 
-## scaling and normalizing policy tenure and population density 
+#### Scaling and normalizing policy tenure and population density
 
 ```{r}
 # Adjust scale with log for population density
@@ -272,14 +261,11 @@ cars_final %>% select(1:4)  %>% gather() %>%
         panel.grid.major.y = element_line(color = "grey98")) 
 ```
 
-
-## the 6 first observations  
+#### 6 first observations
 
 ```{r}
 kable(summary(cars_final), format="markdown")
 ```
-
-
 
 ```{r}
 #boxplot for the distribution of 0 1 
@@ -299,7 +285,7 @@ df.boxplot
 
 ```
 
-## data prepration 
+## Data prepration
 
 ```{r}
 set.seed(1)
@@ -330,11 +316,7 @@ cars_validation[,c(1:4)] <- lapply(cars_validation[,c(1:4)], normalizing)
 summary(cars_validation)
 ```
 
-
-
 ## Classification tree
-
-
 
 ```{r}
 tree_fit <- rpart(train_downsampling$is_claim ~.,
@@ -353,7 +335,7 @@ pred_tree_v_tr <- predict(tree_fit,
                          type ="class")
 ```
 
-
+#### Finding the optimal CP
 ```{r}
 # Find the best cp with minimal xerror ||  /!\ code may need to be improved
 cp_minimal <- tree_fit$cptable[which.min(
@@ -363,8 +345,7 @@ cp_minimal <- tree_fit$cptable[which.min(
 pruned.tree <- prune(tree_fit, cp= cp_minimal) # Prune the train model with lowest cp
 ```
 
-
-
+#### Finding best size tree
 ```{r}
 # Cross-validation
 
@@ -391,8 +372,6 @@ kable(table_cp)
 best_cp <- table_cp[as.integer(names(rows_small_errors)[1]),1]
 ```
 
-
-
 ```{r}
 pruned.tree <- prune(tree_fit, cp = best_cp) # Prune the train model with best cp
 
@@ -400,8 +379,6 @@ rpart.plot(pruned.tree) # Plot the tree with best size
 
 sum(pruned.tree$frame$ncompete == 0) # Number of leaves
 ```
-
-
 
 ### Performance evaluation
 
@@ -420,8 +397,6 @@ fourfoldplot(conf_matrix_tree_v$table,
              main = "Confusion Matrix for Classification
              Tree for validation set") 
 ```
-
-
 
 ```{r}
 # Prediction on Validation data
@@ -445,8 +420,6 @@ fourfoldplot(conf_matrix_tree_v$table,
              Tree (best size) for validation set") 
 
 ```
-
-
 
 #### Lift Chart
 
@@ -495,7 +468,7 @@ train_dummy_downsampled[,c(1:4)] <- lapply(train_dummy_downsampled[,c(1:4)], nor
 valid_dummy[,c(1:4)] <- lapply(valid_dummy[,c(1:4)], normalizing)
 ```
 
-### for loop for finding the optimum k for each measurement 
+#### Loop for finding the optimum k for each measurement
 
 ```{r}
 set.seed(1)
@@ -542,7 +515,7 @@ for (i in 1:50) {
 
 ```
 
-### max k 
+#### Max k
 
 ```{r}
 which(accuracy[,2] == max(accuracy[,2]))   # max accuracy
@@ -550,7 +523,7 @@ which(Specificity[,2] == max(Specificity[,2]))   # max specificity
 which(Sensitivity[,2] == max(Sensitivity[,2]))   # max specificity 
 ```
 
-### plotting the result 
+#### Plotting results
 
 ```{r}
 # Plot accuracy for different k
@@ -580,7 +553,7 @@ ggplot(Specificity, aes(k, overallspecificity)) +
 
 ```
 
-### prediction and confusion matrix for knn
+#### Prediction and confusion matrix for knn
 
 ```{r}
 knn.pred.valid <- knn(train_dummy_downsampled[, -16], valid_dummy[, -16], cl = train_dummy_downsampled[, 16], k = 41 ,prob = T)     #prediction on validation data using best k=6
@@ -625,7 +598,6 @@ nn_1H_2N <- neuralnet(is_claim ~ .,
 plot(nn_1H_2N, rep="best")
 
 
-
 # Predict the output on validation set
 validation_prediction_1H_2N <- predict(nn_1H_2N,
                                       valid_dummy[,-16],
@@ -636,41 +608,36 @@ validation_prediction_1H_2N_binary <-
          >= 0.5, 1, 0) # Transform probabilities as binary outcome 
 ```
 
-
 #### 1 hidden layer and 4 nodes
 
 ```{r}
 # run Neural Network (N.N.) with 1 hidden layer and 4 nodes
-# nn_1H_4N <- neuralnet(is_claim ~ .,
-#                     data = train_dummy_downsampled,
-#                     hidden = c(4)) # 1 hidden layer of 4 nodes
-#                     
-# 
-# 
-# plot(nn_1H_4N, rep="best") # plots the neural net with 4 nodes
-# 
-# 
-# 
-# # Predict the output on validation set
-# validation_prediction_1H_4N <- predict(nn_1H_4N,
-#                                       valid_dummy[,-16],
-#                                       type = "class")
-# 
-# validation_prediction_1H_4N_binary <-
-#   ifelse(validation_prediction_1H_4N[,1]
-#          >= 0.5, 1, 0) # Transform probabilities as binary outcome 
+nn_1H_4N <- neuralnet(is_claim ~ .,
+                   data = train_dummy_downsampled,
+                   hidden = c(4)) # 1 hidden layer of 4 nodes
+                   
+
+plot(nn_1H_4N, rep="best") # plots the neural net with 4 nodes
+
+
+# Predict the output on validation set
+validation_prediction_1H_4N <- predict(nn_1H_4N,
+                                     valid_dummy[,-16],
+                                     type = "class")
+
+validation_prediction_1H_4N_binary <-
+ ifelse(validation_prediction_1H_4N[,1]
+        >= 0.5, 1, 0) # Transform probabilities as binary outcome 
 ```
 
 ### Performance evaluation
 
 ```{r}
-
-
 # Confusion matrix for classification tree with validation set
 conf_matrix_1H2N_valid <- confusionMatrix(
- factor(validation_prediction_1H_2N_binary),
- factor(valid_dummy$is_claim), # change dataset
- positive = "1")
+  factor(validation_prediction_1H_2N_binary),
+  factor(valid_dummy$is_claim), # change dataset
+  positive = "1")
 
 conf_matrix_1H2N_valid
 
@@ -680,14 +647,14 @@ fourfoldplot(conf_matrix_1H2N_valid$table,
             conf.level = 0,
             margin = 1,
             main = "Confusion Matrix for Neural Network
-            1 hidden layer of 2 nodes for validation set") 
+            1 hidden layer of 2 nodes") 
 
 
 # Confusion matrix for classification tree with validation set
 conf_matrix_1H4N_valid <- confusionMatrix(
-factor(validation_prediction_1H_4N_binary),
-factor(valid_dummy$is_claim), # change dataset
-positive = "1")
+  factor(validation_prediction_1H_4N_binary),
+  factor(valid_dummy$is_claim), # change dataset
+  positive = "1")
 
 conf_matrix_1H4N_valid
 
@@ -697,9 +664,8 @@ fourfoldplot(conf_matrix_1H4N_valid$table,
           conf.level = 0,
           margin = 1,
           main = "Confusion Matrix for Neural Network
-          1 hidden layer of 4 nodes for validation set")
+          1 hidden layer of 4 nodes")
 ```
-
 
 ## Logistic Regression
 
@@ -710,7 +676,6 @@ cars.lg <- glm(is_claim ~., data= train_downsampling, family=binomial(link="logi
 
 summary(cars.lg) # Displaying the resulting model
 ```
-
 
 ```{r}
 PlotResidLogist(cars.lg) # Deviance residuals
@@ -1003,9 +968,7 @@ ggplot(data = Accuracy.melt,aes(x=reorder(variable, value),y=value))+
   theme_minimal()
 ```
 
-
 ## overall Specificity
-
 
 ```{r}
 Specificity_P <-  data.frame(LR = round(cm2$byClass[2],3))  #predict specificity by using logistic regression 
@@ -1025,7 +988,6 @@ ggplot(data = Specificity_P.melt,aes(x=reorder(variable, value),y=value))+
 
 ```
 
-
 ## overall Sensitivity
 
 ```{r}
@@ -1043,7 +1005,4 @@ ggplot(data = Sensitivity.melt,aes(x=reorder(variable, value),y=value)) +
   geom_bar(stat="identity", fill="steelblue")+
   geom_text(aes(label=value), vjust=1.6, color="white", size=3.5)+
   theme_minimal()
-
 ```
-
-
